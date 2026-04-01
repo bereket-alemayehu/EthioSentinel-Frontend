@@ -6,9 +6,9 @@ import { LanguageProvider } from "@/components/language-provider";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-100 text-slate-900">
         <GlobalNav />
-        <main className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:py-8">
           {children}
         </main>
       </div>

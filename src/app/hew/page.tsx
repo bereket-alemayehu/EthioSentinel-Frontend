@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
+import { RoleGate } from "@/components/role-gate";
+import { addCaseReport } from "@/lib/reports";
+import { getStoredRole } from "@/lib/auth";
 
 type FormState = {
   location: string;
@@ -31,6 +34,7 @@ export default function HewEntryPage() {
     const cached = localStorage.getItem("hew-form-draft");
     return cached ? (JSON.parse(cached) as FormState) : initialState;
   });
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
@@ -50,7 +54,18 @@ export default function HewEntryPage() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    alert("Case report queued for sync.");
+    const role = getStoredRole();
+    addCaseReport({
+      location: form.location,
+      disease: form.disease as "Malaria" | "Cholera" | "Measles" | "Dengue",
+      cases: form.cases,
+      deaths: form.deaths,
+      notes: form.notes,
+      submittedByRole: role === "admin" ? "admin" : "hew",
+    });
+    setForm(initialState);
+    localStorage.removeItem("hew-form-draft");
+    setMessage("Report submitted successfully.");
   };
 
   const copy = {
@@ -65,6 +80,7 @@ export default function HewEntryPage() {
       deaths: "Deaths",
       notes: "Field Notes",
       submit: "Submit Report",
+      success: message,
     },
     am: {
       title: "የጤና ሰራተኛ መመዝገቢያ",
@@ -77,6 +93,7 @@ export default function HewEntryPage() {
       deaths: "ሞት",
       notes: "ማስታወሻ",
       submit: "ሪፖርት አስገባ",
+      success: message,
     },
     om: {
       title: "Galmee Hojjettuu Fayyaa",
@@ -91,44 +108,51 @@ export default function HewEntryPage() {
       deaths: "Du'a",
       notes: "Yaadannoo",
       submit: "Gabaasa Ergi",
+      success: message,
     },
   }[language];
 
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-extrabold sm:text-3xl">{copy.title}</h1>
-      <p className="text-sm text-slate-700 sm:text-base">{copy.subtitle}</p>
+    <RoleGate allowedRoles={["hew", "admin"]}>
+      <section className="space-y-4">
+        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{copy.title}</h1>
+        <p className="max-w-3xl text-sm text-slate-600 sm:text-base">{copy.subtitle}</p>
 
       <div className="flex flex-wrap gap-2 text-xs font-bold">
-        <span className="rounded-full bg-slate-900 px-3 py-1.5 text-white">
+        <span className="rounded-full bg-emerald-600 px-3 py-1.5 text-white">
           {copy.connectivity}
         </span>
-        <span className="rounded-full bg-yellow-300 px-3 py-1.5 text-slate-900">
+        <span className="rounded-full bg-slate-900 px-3 py-1.5 text-white">
           {copy.saveHint}
         </span>
       </div>
+      {copy.success ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+          {copy.success}
+        </div>
+      ) : null}
 
       <form
         onSubmit={onSubmit}
-        className="space-y-4 rounded-2xl bg-black p-4 text-white ring-2 ring-yellow-300 sm:p-6"
+        className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-sm font-bold">{copy.location}</span>
+            <span className="text-sm font-semibold text-slate-700">{copy.location}</span>
             <input
               required
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
-              className="h-12 w-full rounded-lg border-2 border-white bg-white px-3 text-base font-semibold text-black"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none ring-emerald-500 transition focus:ring-2"
             />
           </label>
 
           <label className="space-y-1">
-            <span className="text-sm font-bold">{copy.disease}</span>
+            <span className="text-sm font-semibold text-slate-700">{copy.disease}</span>
             <select
               value={form.disease}
               onChange={(e) => setForm({ ...form, disease: e.target.value })}
-              className="h-12 w-full rounded-lg border-2 border-white bg-white px-3 text-base font-semibold text-black"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none ring-emerald-500 transition focus:ring-2"
             >
               <option>Malaria</option>
               <option>Cholera</option>
@@ -138,7 +162,7 @@ export default function HewEntryPage() {
           </label>
 
           <label className="space-y-1">
-            <span className="text-sm font-bold">{copy.cases}</span>
+            <span className="text-sm font-semibold text-slate-700">{copy.cases}</span>
             <input
               type="number"
               min={0}
@@ -146,12 +170,12 @@ export default function HewEntryPage() {
               onChange={(e) =>
                 setForm({ ...form, cases: Number(e.target.value) })
               }
-              className="h-12 w-full rounded-lg border-2 border-white bg-white px-3 text-xl font-extrabold text-black"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none ring-emerald-500 transition focus:ring-2"
             />
           </label>
 
           <label className="space-y-1">
-            <span className="text-sm font-bold">{copy.deaths}</span>
+            <span className="text-sm font-semibold text-slate-700">{copy.deaths}</span>
             <input
               type="number"
               min={0}
@@ -159,28 +183,29 @@ export default function HewEntryPage() {
               onChange={(e) =>
                 setForm({ ...form, deaths: Number(e.target.value) })
               }
-              className="h-12 w-full rounded-lg border-2 border-white bg-white px-3 text-xl font-extrabold text-black"
+              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none ring-emerald-500 transition focus:ring-2"
             />
           </label>
         </div>
 
         <label className="space-y-1">
-          <span className="text-sm font-bold">{copy.notes}</span>
+          <span className="text-sm font-semibold text-slate-700">{copy.notes}</span>
           <textarea
             rows={4}
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            className="w-full rounded-lg border-2 border-white bg-white p-3 text-base font-semibold text-black"
+            className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm font-medium text-slate-900 outline-none ring-emerald-500 transition focus:ring-2"
           />
         </label>
 
         <button
           type="submit"
-          className="h-14 w-full rounded-xl bg-yellow-300 text-lg font-extrabold text-black hover:bg-yellow-200"
+          className="h-11 w-full rounded-lg bg-emerald-600 text-sm font-bold text-white transition hover:bg-emerald-700"
         >
           {copy.submit}
         </button>
       </form>
-    </section>
+      </section>
+    </RoleGate>
   );
 }

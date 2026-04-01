@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { languages, text } from "@/lib/i18n";
 import { useLanguage } from "@/components/language-provider";
+import {
+  clearStoredRole,
+  getStoredRole,
+  privilegedRoles,
+  UserRole,
+} from "@/lib/auth";
 
 const navItems = [
   { href: "/citizen", key: "navCitizen" },
@@ -14,13 +21,24 @@ const navItems = [
 export function GlobalNav() {
   const pathname = usePathname();
   const { language, setLanguage } = useLanguage();
+  const [role, setRole] = useState<UserRole | null>(null);
   const t = text[language];
+  const isPrivileged = role ? privilegedRoles.includes(role) : false;
+
+  useEffect(() => {
+    setRole(getStoredRole());
+  }, [pathname]);
+
+  const onLogout = () => {
+    clearStoredRole();
+    setRole(null);
+  };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between">
+    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-base font-bold text-slate-900 sm:text-lg">
+          <p className="truncate text-lg font-extrabold tracking-tight text-slate-900">
             {t.appName}
           </p>
         </div>
@@ -28,14 +46,22 @@ export function GlobalNav() {
         <div className="flex flex-col gap-3 md:items-end">
           <nav className="flex flex-wrap gap-2">
             {navItems.map((item) => {
+              if ((item.href === "/hew" || item.href === "/admin") && !isPrivileged) {
+                return null;
+              }
+
+              if (item.href === "/admin" && role !== "admin") {
+                return null;
+              }
+
               const isActive = pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-full px-3 py-2 text-xs font-semibold sm:text-sm ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold sm:text-sm ${
                     isActive
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-slate-900 text-white"
                       : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
@@ -43,6 +69,26 @@ export function GlobalNav() {
                 </Link>
               );
             })}
+
+            <Link
+              href="/login"
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold sm:text-sm ${
+                pathname.startsWith("/login")
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Login
+            </Link>
+            {role ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 sm:text-sm"
+              >
+                Logout ({role})
+              </button>
+            ) : null}
           </nav>
 
           <div className="flex items-center gap-2" aria-label={t.language}>
