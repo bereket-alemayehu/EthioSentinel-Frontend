@@ -11,7 +11,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo-pwa.png'],
+      includeAssets: ['logo.png', 'logo-pwa.png'],
       manifest: {
         name: 'EthioHealth Sentinel',
         short_name: 'EthioSentinel',

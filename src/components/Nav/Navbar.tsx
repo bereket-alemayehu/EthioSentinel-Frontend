@@ -35,7 +35,6 @@ import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
-import logo from "@/assets/images/logo1.png"
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -85,7 +84,7 @@ export function Navbar() {
         <div className="flex items-center gap-10">
           <Link to={user ? `/${user.role}` : "/"} className="flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-95">
             <img 
-              src={logo} 
+              src="/logo.png" 
               alt="Logo" 
               className="h-10 w-auto object-contain" 
             />
