@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import { useTranslation } from 'react-i18next';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `
@@ -24,15 +26,35 @@ interface Message {
 }
 
 export function Chatbot() {
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  
+  // Initial message localized
+  const getGreeting = () => {
+    return i18n.language === 'am' 
+      ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ። ዛሬ በጤና ክትትል ረገድ እንዴት ልረዳዎት እችላለሁ?`
+      : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`,
+      text: getGreeting(),
       sender: 'bot',
       timestamp: new Date(),
     },
   ]);
+
+  // Update greeting if language changes and no other messages exist
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].sender === 'bot') {
+      setMessages([{
+        ...messages[0],
+        text: getGreeting()
+      }]);
+    }
+  }, [i18n.language]);
+
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -76,12 +98,9 @@ export function Chatbot() {
     }
 
     try {
-      console.log("EthioSentinel: Initializing Gemini SDK...");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
-      console.log("EthioSentinel: Sending message to Gemini...", input);
-      
       const chatHistory = messages
         .filter((_, i) => i > 0)
         .map((m: Message) => ({
@@ -92,19 +111,20 @@ export function Chatbot() {
       const chat = model.startChat({
         history: chatHistory,
         generationConfig: {
-          maxOutputTokens: 500,
+          maxOutputTokens: 1000,
         },
       });
 
+      const currentLanguage = i18n.language === 'am' ? 'Amharic' : 'English';
       const promptText = chatHistory.length === 0 
-        ? `${SYSTEM_PROMPT}\n\nUser Question: ${input}`
-        : input;
+        ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Always respond in ${currentLanguage}.\n\nUser Question: ${input}`
+        : `(Respond in ${currentLanguage}) ${input}`;
       
       const result = await chat.sendMessage(promptText);
       const response = await result.response;
       const text = response.text();
 
-      if (!text) throw new Error("Empty response from Gemini");
+      if (!text) throw new Error("Empty response");
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -114,21 +134,16 @@ export function Chatbot() {
       };
       setMessages((prev: Message[]) => [...prev, botMessage]);
     } catch (error: any) {
-      console.error("Gemini AI API Error Details:", error);
+      console.error("Chatbot Error:", error);
       
-      let friendlyError = "I'm having trouble connecting to my brain right now. ";
-      
-      // Extract detailed error message if available
-      if (error?.message) {
-        friendlyError += `Error: ${error.message}`;
-      } else {
-        friendlyError += "Please try again in a moment.";
-      }
+      let friendlyError = "I'm having trouble connecting to my brain right now. Please try again in a moment.";
       
       if (error?.message?.includes("API_KEY_INVALID")) {
-        friendlyError = "The provided API Key appears to be invalid. Please check your credentials.";
+        friendlyError = "The provided API Key appears to be invalid. Please check your .env file.";
       } else if (error?.message?.includes("User location is not supported")) {
         friendlyError = "I'm sorry, but my AI services are not currently available in your region.";
+      } else if (error?.message?.includes("quota")) {
+        friendlyError = "I'm a bit overwhelmed with requests right now. Please wait a minute and try again.";
       }
 
       const errorMessage: Message = {
@@ -152,7 +167,7 @@ export function Chatbot() {
             initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="mb-4 w-[350px] sm:w-[400px] h-[550px] bg-card border rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl border-border/50 ring-1 ring-black/5"
+            className="mb-4 w-[350px] sm:w-[450px] h-[600px] bg-card border rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl border-border/50 ring-1 ring-black/5"
           >
             {/* Header */}
             <div className="p-4 primary-gradient text-white flex items-center justify-between shadow-lg">
@@ -179,7 +194,7 @@ export function Chatbot() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10 custom-scrollbar">
               {messages.map((m) => (
                 <div
                   key={m.id}
@@ -190,16 +205,35 @@ export function Chatbot() {
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                      "max-w-[90%] rounded-2xl px-4 py-3 text-sm/relaxed shadow-sm",
                       m.sender === 'user'
-                        ? "bg-primary text-primary-foreground rounded-tr-none"
-                        : "bg-background text-foreground rounded-tl-none border border-border/50"
+                        ? "primary-gradient text-white rounded-tr-none"
+                        : "bg-background text-foreground rounded-tl-none border border-border/50 ring-1 ring-black/5"
                     )}
                   >
-                    {m.text}
                     <div className={cn(
-                        "text-[10px] mt-1 opacity-60",
-                        m.sender === 'user' ? "text-right" : "text-left"
+                      "prose prose-sm dark:prose-invert max-w-none",
+                      m.sender === 'user' ? "text-white" : "text-foreground"
+                    )}>
+                      {m.sender === 'bot' ? (
+                        <ReactMarkdown 
+                          components={{
+                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                            li: ({ children }) => <li className="mb-1">{children}</li>,
+                            strong: ({ children }) => <strong className="font-bold text-primary-600 dark:text-primary-300">{children}</strong>,
+                          }}
+                        >
+                          {m.text}
+                        </ReactMarkdown>
+                      ) : (
+                        <p>{m.text}</p>
+                      )}
+                    </div>
+                    <div className={cn(
+                        "text-[10px] mt-1.5 opacity-70 font-medium tracking-wide",
+                        m.sender === 'user' ? "text-right text-white/80" : "text-left text-muted-foreground"
                     )}>
                         {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -208,22 +242,22 @@ export function Chatbot() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-background rounded-2xl rounded-tl-none px-4 py-2.5 border border-border/50 shadow-sm flex items-center gap-2">
-                    <div className="flex gap-1">
+                  <div className="bg-background rounded-2xl rounded-tl-none px-4 py-3 border border-border/50 shadow-sm flex items-center gap-2 ring-1 ring-black/5">
+                    <div className="flex gap-1.5">
                       <motion.span 
                         animate={{ opacity: [0.4, 1, 0.4] }} 
                         transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                        className="w-1.5 h-1.5 bg-primary-500 rounded-full" 
                       />
                       <motion.span 
                         animate={{ opacity: [0.4, 1, 0.4] }} 
                         transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                        className="w-1.5 h-1.5 bg-primary-500 rounded-full" 
                       />
                       <motion.span 
                         animate={{ opacity: [0.4, 1, 0.4] }} 
                         transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                        className="w-1.5 h-1.5 bg-primary-500 rounded-full" 
                       />
                     </div>
                   </div>
