@@ -35,6 +35,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
+import { logoB64 } from "@/assets/logo-b64"
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -84,11 +85,11 @@ export function Navbar() {
         <div className="flex items-center gap-10">
           <Link to={user ? `/${user.role}` : "/"} className="flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] active:scale-95">
             <img 
-              src="/logo.png" 
-              alt="Logoo" 
+              src={logoB64} 
+              alt="Logo" 
               className="h-8 w-auto md:h-10 object-contain" 
             />
-            <span className="text-xl md:text-2xl font-bold tracking-tighter hidden min-[400px]:inline-block font-heading">
+            <span className="text-xl md:text-2xl font-bold tracking-tighter hidden md:inline-block font-heading">
               Ethio<span className="primary-text-gradient font-black">Sentinel</span>
             </span>
           </Link>
