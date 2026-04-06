@@ -1,0 +1,297 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { MessageCircle, X, Send, Bot } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const SYSTEM_PROMPT = `
+You are the EthioSentinel Assistant, a specialized healthcare and system navigator for the EthioSentinel platform in Ethiopia. 
+Your goal is to help health workers, admins, and public users with:
+1. System navigation (Analytics, Reports, User Management).
+2. Healthcare data interpretation (malaria outbreaks, vaccination trends, etc.).
+3. Technical assistance (Offline capabilities, PWA features).
+
+Always be professional, concise, and healthcare-focused. If asked about real-time data you don't have access to, guide the user to the "Analytics" or "Reports" sections of the portal.
+`;
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
+export function Chatbot() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      text: `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`,
+      sender: 'bot',
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+        scrollToBottom();
+    }
+  }, [messages, isLoading, isOpen]);
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages((prev: Message[]) => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("EthioSentinel: VITE_GEMINI_API_KEY is missing from .env");
+      setMessages((prev: Message[]) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: "Configuration Error: API Key is missing. Please ensure VITE_GEMINI_API_KEY is set in your .env file and restart the server.",
+        sender: 'bot',
+        timestamp: new Date(),
+      }]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log("EthioSentinel: Initializing Gemini SDK...");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      console.log("EthioSentinel: Sending message to Gemini...", input);
+      
+      const chatHistory = messages
+        .filter((_, i) => i > 0)
+        .map((m: Message) => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }],
+        }));
+
+      const chat = model.startChat({
+        history: chatHistory,
+        generationConfig: {
+          maxOutputTokens: 500,
+        },
+      });
+
+      const promptText = chatHistory.length === 0 
+        ? `${SYSTEM_PROMPT}\n\nUser Question: ${input}`
+        : input;
+      
+      const result = await chat.sendMessage(promptText);
+      const response = await result.response;
+      const text = response.text();
+
+      if (!text) throw new Error("Empty response from Gemini");
+
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: text,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages((prev: Message[]) => [...prev, botMessage]);
+    } catch (error: any) {
+      console.error("Gemini AI API Error Details:", error);
+      
+      let friendlyError = "I'm having trouble connecting to my brain right now. ";
+      
+      // Extract detailed error message if available
+      if (error?.message) {
+        friendlyError += `Error: ${error.message}`;
+      } else {
+        friendlyError += "Please try again in a moment.";
+      }
+      
+      if (error?.message?.includes("API_KEY_INVALID")) {
+        friendlyError = "The provided API Key appears to be invalid. Please check your credentials.";
+      } else if (error?.message?.includes("User location is not supported")) {
+        friendlyError = "I'm sorry, but my AI services are not currently available in your region.";
+      }
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: friendlyError,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages((prev: Message[]) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-100 flex flex-col items-end">
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="mb-4 w-[350px] sm:w-[400px] h-[550px] bg-card border rounded-2xl shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl border-border/50 ring-1 ring-black/5"
+          >
+            {/* Header */}
+            <div className="p-4 primary-gradient text-white flex items-center justify-between shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm tracking-tight">EthioSentinel Assistant</h3>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                    <span className="text-[10px] opacity-80 uppercase tracking-widest font-bold">Online</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="hover:bg-white/10 text-white rounded-full transition-colors h-8 w-8"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10">
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={cn(
+                    "flex w-full",
+                    m.sender === 'user' ? "justify-end" : "justify-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                      m.sender === 'user'
+                        ? "bg-primary text-primary-foreground rounded-tr-none"
+                        : "bg-background text-foreground rounded-tl-none border border-border/50"
+                    )}
+                  >
+                    {m.text}
+                    <div className={cn(
+                        "text-[10px] mt-1 opacity-60",
+                        m.sender === 'user' ? "text-right" : "text-left"
+                    )}>
+                        {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-background rounded-2xl rounded-tl-none px-4 py-2.5 border border-border/50 shadow-sm flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <motion.span 
+                        animate={{ opacity: [0.4, 1, 0.4] }} 
+                        transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                      />
+                      <motion.span 
+                        animate={{ opacity: [0.4, 1, 0.4] }} 
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                      />
+                      <motion.span 
+                        animate={{ opacity: [0.4, 1, 0.4] }} 
+                        transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                        className="w-1.5 h-1.5 bg-primary rounded-full" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <form
+              onSubmit={handleSend}
+              className="p-4 border-t bg-background flex gap-2 items-center"
+            >
+              <Input
+                placeholder="Type your message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl"
+              />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={!input.trim() || isLoading}
+                className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </Button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toggle Button */}
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-14 h-14 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center p-0",
+          isOpen 
+            ? "bg-background text-foreground border border-border/50" 
+            : "primary-gradient text-white hover:shadow-primary/40 border-none"
+        )}
+      >
+        <AnimatePresence mode='wait'>
+          {isOpen ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <X className="w-6 h-6" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="open"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="relative"
+            >
+              <MessageCircle className="w-7 h-7" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full ring-2 ring-red-500/20" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Button>
+    </div>
+  );
+}
