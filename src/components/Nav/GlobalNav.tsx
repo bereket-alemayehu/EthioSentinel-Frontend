@@ -1,15 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { languages, text } from "@/lib/i18n";
-import { useLanguage } from "@/components/language-provider";
+import { useLanguage } from "@/providers/LanguageProvider";
 import {
   clearStoredRole,
   getStoredRole,
   privilegedRoles,
-  UserRole,
+  type UserRole,
 } from "@/lib/auth";
 
 const navItems = [
@@ -19,7 +18,7 @@ const navItems = [
 ] as const;
 
 export function GlobalNav() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { language, setLanguage } = useLanguage();
   const [role, setRole] = useState<UserRole | null>(null);
   const t = text[language];
@@ -35,10 +34,10 @@ export function GlobalNav() {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-border/80 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <p className="truncate text-lg font-extrabold tracking-tight text-slate-900">
+          <p className="truncate text-lg font-extrabold tracking-tight text-foreground font-heading">
             {t.appName}
           </p>
         </div>
@@ -58,11 +57,11 @@ export function GlobalNav() {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  to={item.href}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold sm:text-sm ${
                     isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-primary-500 text-primary-foreground"
+                      : "bg-light-800 text-light-500 hover:bg-light-700"
                   }`}
                 >
                   {t[item.key]}
@@ -71,11 +70,11 @@ export function GlobalNav() {
             })}
 
             <Link
-              href="/login"
+              to="/login"
               className={`rounded-full px-3 py-1.5 text-xs font-semibold sm:text-sm ${
                 pathname.startsWith("/login")
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-primary-500 text-primary-foreground"
+                  : "bg-light-800 text-light-500 hover:bg-light-700"
               }`}
             >
               Login
@@ -84,7 +83,7 @@ export function GlobalNav() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 sm:text-sm"
+                className="rounded-full bg-error-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-error-600 sm:text-sm"
               >
                 Logout ({role})
               </button>
@@ -95,7 +94,7 @@ export function GlobalNav() {
             <span className="text-xs font-semibold text-slate-600">
               {t.language}
             </span>
-            <div className="flex overflow-hidden rounded-full border border-slate-300">
+            <div className="flex overflow-hidden rounded-full border border-border">
               {languages.map((item) => (
                 <button
                   key={item.code}
@@ -103,8 +102,8 @@ export function GlobalNav() {
                   onClick={() => setLanguage(item.code)}
                   className={`px-3 py-1.5 text-xs font-bold ${
                     language === item.code
-                      ? "bg-slate-800 text-white"
-                      : "bg-white text-slate-700 hover:bg-slate-100"
+                      ? "bg-primary-500 text-white"
+                      : "bg-background text-foreground hover:bg-light-800"
                   }`}
                 >
                   {item.label}

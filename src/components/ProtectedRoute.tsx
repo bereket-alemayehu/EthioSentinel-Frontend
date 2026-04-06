@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { getStoredRole, UserRole } from "@/lib/auth";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getStoredRole, type UserRole } from "@/lib/auth";
 
 type RoleGateProps = {
   allowedRoles: UserRole[];
@@ -10,8 +10,8 @@ type RoleGateProps = {
 };
 
 export function RoleGate({ allowedRoles, children }: RoleGateProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -20,13 +20,13 @@ export function RoleGate({ allowedRoles, children }: RoleGateProps) {
     setAuthorized(allowed);
 
     if (!allowed) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      navigate(`/login?next=${encodeURIComponent(pathname)}`, { replace: true });
     }
-  }, [allowedRoles, pathname, router]);
+  }, [allowedRoles, pathname, navigate]);
 
   if (!authorized) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+      <section className="rounded-2xl border border-border bg-background p-4 text-sm text-light-500 shadow-sm">
         Redirecting to role login...
       </section>
     );
