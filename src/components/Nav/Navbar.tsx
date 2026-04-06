@@ -82,13 +82,13 @@ export function Navbar() {
       <div className="w-full flex h-16 items-center justify-between px-6">
         {/* Left: Logo & Desktop Nav */}
         <div className="flex items-center gap-10">
-          <Link to={user ? `/${user.role}` : "/"} className="flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-95">
+          <Link to={user ? `/${user.role}` : "/"} className="flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] active:scale-95">
             <img 
               src="/logo.png" 
-              alt="Logo" 
-              className="h-10 w-auto object-contain" 
+              alt="Logoo" 
+              className="h-8 w-auto md:h-10 object-contain" 
             />
-            <span className="text-2xl font-bold tracking-tighter sm:inline-block font-heading">
+            <span className="text-xl md:text-2xl font-bold tracking-tighter hidden min-[400px]:inline-block font-heading">
               Ethio<span className="primary-text-gradient font-black">Sentinel</span>
             </span>
           </Link>
