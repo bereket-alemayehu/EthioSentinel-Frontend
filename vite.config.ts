@@ -11,7 +11,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.png', 'logo-pwa.png'],
+      includeAssets: ['ethioHealthsentinel.png', 'logo.png', 'logo-pwa.png'],
       manifest: {
         name: 'EthioHealth Sentinel',
         short_name: 'EthioSentinel',
@@ -19,12 +19,12 @@ export default defineConfig({
         theme_color: '#0ea5e9',
         icons: [
           {
-            src: 'logo-pwa.png',
+            src: 'ethioHealthsentinel.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'logo-pwa.png',
+            src: 'ethioHealthsentinel.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

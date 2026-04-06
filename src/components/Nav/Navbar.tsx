@@ -88,7 +88,7 @@ export function Navbar() {
               alt="Logo" 
               className="h-10 w-auto object-contain" 
             />
-            <span className="text-2xl font-bold tracking-tighter hidden sm:inline-block font-heading">
+            <span className="text-2xl font-bold tracking-tighter sm:inline-block font-heading">
               Ethio<span className="primary-text-gradient font-black">Sentinel</span>
             </span>
           </Link>
