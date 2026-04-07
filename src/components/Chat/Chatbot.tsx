@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,12 @@ Your goal is to help health workers, admins, and public users with:
 1. System navigation (Analytics, Reports, User Management).
 2. Healthcare data interpretation (malaria outbreaks, vaccination trends, etc.).
 3. Technical assistance (Offline capabilities, PWA features).
+4. Health Advisory (Provide general health information, preventive measures, and wellness advice for the public).
 
-Always be professional, concise, and healthcare-focused. If asked about real-time data you don't have access to, guide the user to the "Analytics" or "Reports" sections of the portal.
+- Always provide a medical disclaimer: "I am an AI assistant, not a doctor. Please consult a healthcare professional for clinical diagnosis or treatment."
+- Be professional, concise, and healthcare-focused. 
+- If asked about real-time data you don't have access to, guide the user to the "Analytics" or "Reports" sections of the portal.
+- Respond in the language requested (English or Amharic).
 `;
 
 interface Message {
@@ -36,14 +40,33 @@ export function Chatbot() {
       : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
   };
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: getGreeting(),
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('ethiosentinel_chat_history');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp)
+        }));
+      } catch (e) {
+        console.error("EthioSentinel: Failed to parse chat history", e);
+      }
+    }
+    return [
+      {
+        id: '1',
+        text: getGreeting(),
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ];
+  });
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    localStorage.setItem('ethiosentinel_chat_history', JSON.stringify(messages));
+  }, [messages]);
 
   // Update greeting if language changes and no other messages exist
   useEffect(() => {
@@ -158,6 +181,16 @@ export function Chatbot() {
     }
   };
 
+  const clearHistory = () => {
+    const initialMessage: Message = {
+      id: Date.now().toString(),
+      text: getGreeting(),
+      sender: 'bot',
+      timestamp: new Date(),
+    };
+    setMessages([initialMessage]);
+  };
+
   return (
     <div className="fixed bottom-6 right-6 z-100 flex flex-col items-end">
       {/* Chat Window */}
@@ -183,14 +216,25 @@ export function Chatbot() {
                   </div>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(false)}
-                className="hover:bg-white/10 text-white rounded-full transition-colors h-8 w-8"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearHistory}
+                  title="Clear conversation"
+                  className="hover:bg-white/10 text-white rounded-full transition-colors h-8 w-8"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsOpen(false)}
+                  className="hover:bg-white/10 text-white rounded-full transition-colors h-8 w-8"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Messages */}
