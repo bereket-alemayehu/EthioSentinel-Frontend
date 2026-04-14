@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { SymptomChecker } from "@/components/Chat/SymptomChecker";
 
 type District = {
   id: number;
@@ -280,6 +281,8 @@ export default function CitizenPage() {
           </label>
         </div>
       </div>
+
+      <SymptomChecker />
 
       {loading ? (
         <div className="rounded-lg border p-6 text-sm text-muted-foreground">
