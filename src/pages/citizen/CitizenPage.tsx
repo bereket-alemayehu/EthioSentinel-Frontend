@@ -202,7 +202,7 @@ export default function CitizenPage() {
         <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-2xl" />
 
-        <div className="relative mx-auto max-w-screen-2xl px-6 py-10 sm:px-10 lg:px-16">
+        <div className="relative w-full px-6 py-10 sm:px-10 lg:px-16">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-white/70 text-sm font-medium mb-1">
@@ -321,7 +321,7 @@ export default function CitizenPage() {
       </div>
 
       {/* ── Main Content ─────────────────────────────────────────── */}
-      <div className="mx-auto max-w-screen-2xl px-6 sm:px-10 lg:px-16 py-8">
+      <div className="w-full px-6 sm:px-10 lg:px-16 py-8">
         {/* Error */}
         {error && (
           <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-5 py-4 text-red-700 dark:text-red-400">

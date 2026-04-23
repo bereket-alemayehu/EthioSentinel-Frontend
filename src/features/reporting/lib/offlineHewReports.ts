@@ -5,6 +5,7 @@ export type HewDraftReportInput = {
   cases: number;
   deaths: number;
   date: string;
+  district: string;
 };
 
 export type HewQueuedReport = HewDraftReportInput & {
@@ -45,6 +46,7 @@ export async function queueHewReport(input: HewDraftReportInput) {
   const next: HewQueuedReport = {
     id: makeId(),
     diseaseType: input.diseaseType,
+    district: input.district,
     cases: input.cases,
     deaths: input.deaths,
     date: input.date,
@@ -105,4 +107,21 @@ export async function syncQueuedHewReports(
     synced,
     failed,
   };
+}
+
+export async function deleteQueuedHewReport(id: string) {
+  const current = await readQueue();
+  const next = current.filter((r) => r.id !== id);
+  await writeQueue(next);
+}
+
+export async function updateQueuedHewReport(id: string, updates: Partial<HewDraftReportInput>) {
+  const current = await readQueue();
+  const next = current.map((r) => {
+    if (r.id === id) {
+      return { ...r, ...updates, status: "pending" as const }; // Reset status to pending after edit
+    }
+    return r;
+  });
+  await writeQueue(next);
 }

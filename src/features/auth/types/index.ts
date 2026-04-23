@@ -1,13 +1,19 @@
-export type UserRole = "citizen" | "hew" | "admin";
+export type UserRole = "ADMIN" | "HEW" | "CITIZEN";
 
 export interface User {
-  name: string;
+  id: string;
+  username: string;
   email: string;
   role: UserRole;
+  region: string;
+  assignedDistrict?: string;
 }
 
 export interface AuthContextType {
   user: User | null;
-  login: (role: UserRole) => void;
-  logout: () => void;
+  isLoading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  clearError: () => void;
 }

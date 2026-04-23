@@ -1,34 +1,69 @@
-export type UserRole = "citizen" | "hew" | "admin";
+import { api } from "@/lib/axios";
+import type { User, UserRole } from "../types";
+export type { User, UserRole };
+
 
 const AUTH_ROLE_KEY = "ethio-role";
+const AUTH_USER_KEY = "ethio-user";
 
-export const privilegedRoles: UserRole[] = ["hew", "admin"];
+export const privilegedRoles: UserRole[] = ["HEW", "ADMIN"];
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    user: User;
+  };
+}
+
+export async function loginApi(email: string, password: string): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/login", { email, password });
+  const user = response.data.data.user;
+  if (user.role) setStoredRole(user.role);
+  return user;
+}
+
+export async function logoutApi(): Promise<void> {
+  await api.post("/auth/logout");
+  clearStoredRole();
+}
+
+export async function getMeApi(): Promise<User> {
+  const response = await api.get<AuthResponse>("/auth/me");
+  const user = response.data.data.user;
+  if (user.role) setStoredRole(user.role);
+  return user;
+}
 
 export function getStoredRole(): UserRole | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
+  if (typeof window === "undefined") return null;
   const role = window.localStorage.getItem(AUTH_ROLE_KEY);
-  if (role === "admin" || role === "hew" || role === "citizen") {
-    return role;
-  }
-
-  return null;
+  return (role as UserRole) || null;
 }
 
 export function setStoredRole(role: UserRole) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(AUTH_ROLE_KEY, role);
 }
 
 export function clearStoredRole() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+  if (typeof window === "undefined") return;
   window.localStorage.removeItem(AUTH_ROLE_KEY);
+  window.localStorage.removeItem(AUTH_USER_KEY);
+}
+
+export function getStoredUser(): User | null {
+  if (typeof window === "undefined") return null;
+  const user = window.localStorage.getItem(AUTH_USER_KEY);
+  if (!user) return null;
+  try {
+    return JSON.parse(user);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: User) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 }
