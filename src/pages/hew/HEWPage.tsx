@@ -9,11 +9,16 @@ import {
   Activity,
   User as UserIcon,
   MapPin,
-  Stethoscope
+  Stethoscope,
+  Trash2,
+  Edit3,
+  RotateCcw
 } from "lucide-react";
 import {
   getAllQueuedHewReports,
   queueHewReport,
+  deleteQueuedHewReport,
+  updateQueuedHewReport,
   type HewDraftReportInput,
   type HewQueuedReport,
 } from "@/features/reporting/lib/offlineHewReports";
@@ -21,6 +26,7 @@ import { useReportMutation, useSyncReportsMutation } from "@/features/reporting/
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/Modal";
 import { toast } from "sonner";
 
 export default function HEWPage() {
@@ -38,6 +44,18 @@ export default function HEWPage() {
 
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [queue, setQueue] = useState<HewQueuedReport[]>([]);
+
+  // Modal States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<HewQueuedReport | null>(null);
+  const [editForm, setEditForm] = useState<HewDraftReportInput>({
+    diseaseType: "",
+    district: "",
+    cases: 0,
+    deaths: 0,
+    date: "",
+  });
 
   const isSyncing = syncMutation.isPending;
 
@@ -135,6 +153,61 @@ export default function HEWPage() {
 
     if (navigator.onLine && !reportMutation.isError) {
       await syncNow();
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const report = queue.find(r => r.id === id);
+    if (report) {
+      setSelectedReport(report);
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (selectedReport) {
+      await deleteQueuedHewReport(selectedReport.id);
+      await refreshQueue();
+      setIsDeleteModalOpen(false);
+      setSelectedReport(null);
+      toast.success("Log entry deleted.");
+    }
+  };
+
+  const handleEdit = (item: HewQueuedReport) => {
+    setSelectedReport(item);
+    setEditForm({
+      diseaseType: item.diseaseType,
+      district: item.district,
+      cases: item.cases,
+      deaths: item.deaths,
+      date: item.date,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedReport) {
+      await updateQueuedHewReport(selectedReport.id, editForm);
+      await refreshQueue();
+      setIsEditModalOpen(false);
+      setSelectedReport(null);
+      toast.success("Report updated successfully.");
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!navigator.onLine) {
+        toast.error("Offline: Cannot retry sync right now.");
+        return;
+    }
+    try {
+        await syncMutation.mutateAsync();
+        await refreshQueue();
+        toast.success("Retry attempt finished.");
+    } catch {
+        toast.error("Retry failed.");
     }
   };
 
@@ -266,8 +339,8 @@ export default function HEWPage() {
             </motion.div>
         </div>
 
-        {/* Right Column: Report Form & Table (8 units) */}
-        <div className="lg:col-span-8 space-y-8">
+        {/* Right Column: Report Form (8 units) */}
+        <div className="lg:col-span-8">
             
             {/* New Report Card */}
             <motion.div 
@@ -367,104 +440,261 @@ export default function HEWPage() {
                     </Button>
                 </form>
             </motion.div>
-
-            {/* Queue Table Card */}
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="card-wrapper p-10 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl shadow-slate-900/5 min-h-[400px]"
-            >
-                <div className="flex-between mb-10">
-                    <div className="flex-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex-center text-primary-500 shadow-sm">
-                            <TableIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-black text-dark-300 dark:text-white tracking-tighter uppercase">Transmission Logs</h2>
-                            <p className="text-[10px] text-light-500 font-black uppercase tracking-[0.2em] mt-1">Localized PWA Database Context</p>
-                        </div>
-                    </div>
-                    {pendingCount > 0 && (
-                        <div className="px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
-                            Needs Synchronization
-                        </div>
-                    )}
-                </div>
-
-                <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left border-separate border-spacing-y-4">
-                        <thead>
-                            <tr className="text-light-500 dark:text-light-700 text-[10px] font-black uppercase tracking-[0.25em]">
-                                <th className="px-6 py-4">Identification</th>
-                                <th className="px-6 py-4 text-center">Infection Stats</th>
-                                <th className="px-6 py-4">Operational Area</th>
-                                <th className="px-6 py-4">Timestamp</th>
-                                <th className="px-6 py-4 text-right">Protocol</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <AnimatePresence mode="popLayout">
-                                {queue.map((item) => (
-                                    <motion.tr 
-                                        layout
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        key={item.id}
-                                        className="bg-light-700/20 dark:bg-white/5 border border-white/5 transition-all hover:bg-white dark:hover:bg-white/10 group cursor-default"
-                                    >
-                                        <td className="px-6 py-6 font-black text-dark-300 dark:text-white first:rounded-l-3xl uppercase tracking-tighter">
-                                            {item.diseaseType}
-                                        </td>
-                                        <td className="px-6 py-6 text-center">
-                                            <div className="flex-center gap-6">
-                                                <div className="text-center group-hover:scale-110 transition-transform">
-                                                    <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Cases</p>
-                                                    <p className="text-lg font-black text-primary-500">{item.cases}</p>
-                                                </div>
-                                                <div className="w-px h-10 bg-slate-200 dark:bg-white/10" />
-                                                <div className="text-center group-hover:scale-110 transition-transform">
-                                                    <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Deaths</p>
-                                                    <p className="text-lg font-black text-red-500">{item.deaths}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-6 text-xs font-black text-light-500 dark:text-light-700 uppercase tracking-widest">
-                                            {item.district}
-                                        </td>
-                                        <td className="px-6 py-6 text-xs font-bold text-light-500 dark:text-light-700">
-                                            {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </td>
-                                        <td className="px-6 py-6 text-right last:rounded-r-3xl">
-                                            {item.status === 'synced' ? (
-                                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm">
-                                                    <CheckCircle2 className="w-4 h-4" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Secure</span>
-                                                </div>
-                                            ) : (
-                                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
-                                                    <RefreshCw className="w-4 h-4 animate-spin-slow" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">Pending</span>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </AnimatePresence>
-                            {queue.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="py-24 text-center">
-                                        <Database className="w-20 h-20 text-light-700/50 dark:text-white/5 mx-auto mb-6" />
-                                        <p className="text-light-500 font-black uppercase tracking-[0.3em]">No Transmission Records Identified</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </motion.div>
         </div>
       </div>
+
+      {/* ── Transmission Logs: Full Width Section ────────────────── */}
+      <div className="w-full px-10 mt-8">
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="card-wrapper p-10 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl shadow-slate-900/5 min-h-[400px]"
+        >
+            <div className="flex-between mb-10">
+                <div className="flex-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex-center text-primary-500 shadow-sm">
+                        <TableIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-dark-300 dark:text-white tracking-tighter uppercase">Transmission Logs</h2>
+                        <p className="text-[10px] text-light-500 font-black uppercase tracking-widest mt-1">Localized PWA Database Context</p>
+                    </div>
+                </div>
+                <div className="flex gap-4">
+                    {pendingCount > 0 && (
+                        <div className="px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                            {pendingCount} Needs Synchronization
+                        </div>
+                    )}
+                    <Button 
+                        onClick={refreshQueue}
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-xl hover:bg-primary-500/10"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-separate border-spacing-y-4">
+                    <thead>
+                        <tr className="text-light-500 dark:text-light-700 text-[10px] font-black uppercase tracking-widest">
+                            <th className="px-6 py-4">Identification</th>
+                            <th className="px-6 py-4 text-center">Infection Stats</th>
+                            <th className="px-6 py-4">Operational Area</th>
+                            <th className="px-6 py-4">Timestamp</th>
+                            <th className="px-6 py-4">Transmission Status</th>
+                            <th className="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <AnimatePresence mode="popLayout">
+                            {queue.map((item) => (
+                                <motion.tr 
+                                    layout
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    key={item.id}
+                                    className="bg-light-700/20 dark:bg-white/5 border border-white/5 transition-all hover:bg-white dark:hover:bg-white/10 group cursor-default"
+                                >
+                                    <td className="px-6 py-6 font-black text-dark-300 dark:text-white first:rounded-l-3xl uppercase tracking-tighter">
+                                        {item.diseaseType}
+                                    </td>
+                                    <td className="px-6 py-6 text-center">
+                                        <div className="flex-center gap-6">
+                                            <div className="text-center group-hover:scale-110 transition-transform">
+                                                <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Cases</p>
+                                                <p className="text-lg font-black text-primary-500">{item.cases}</p>
+                                            </div>
+                                            <div className="w-px h-10 bg-slate-200 dark:bg-white/10" />
+                                            <div className="text-center group-hover:scale-110 transition-transform">
+                                                <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Deaths</p>
+                                                <p className="text-lg font-black text-red-500">{item.deaths}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-6 text-xs font-black text-light-500 dark:text-light-700 uppercase tracking-widest">
+                                        {item.district}
+                                    </td>
+                                    <td className="px-6 py-6 text-xs font-bold text-light-500 dark:text-light-700">
+                                        {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    </td>
+                                    <td className="px-6 py-6">
+                                        {item.status === 'synced' ? (
+                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Securely Synced</span>
+                                            </div>
+                                        ) : (
+                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
+                                                <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Pending Upload</span>
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-6 text-right last:rounded-r-3xl">
+                                        <div className="flex justify-end gap-2">
+                                            {item.status !== 'synced' && (
+                                                <Button 
+                                                    onClick={() => handleRetry()}
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-9 w-9 rounded-lg text-amber-500 hover:bg-amber-500/10"
+                                                    title="Retry Sync"
+                                                >
+                                                    <RotateCcw className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            <Button 
+                                                onClick={() => handleEdit(item)}
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-9 w-9 rounded-lg text-primary-500 hover:bg-primary-500/10"
+                                                title="Edit Entry"
+                                            >
+                                                <Edit3 className="w-4 h-4" />
+                                            </Button>
+                                            <Button 
+                                                onClick={() => handleDelete(item.id)}
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-9 w-9 rounded-lg text-red-500 hover:bg-red-500/10"
+                                                title="Delete Entry"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                            ))}
+                        </AnimatePresence>
+                        {queue.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="py-24 text-center">
+                                    <Database className="w-20 h-20 text-light-700/50 dark:text-white/5 mx-auto mb-6" />
+                                    <p className="text-light-500 font-black uppercase tracking-[0.3em]">No Transmission Records Identified</p>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </motion.div>
+      </div>
+
+      {/* ── Modals ─────────────────────────────────────────── */}
+      
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Confirm Deletion"
+        className="max-w-md"
+      >
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border border-red-100 dark:border-red-500/20">
+            <p className="text-sm font-bold uppercase tracking-tight">Warning: Irreversible Action</p>
+            <p className="text-sm mt-1 opacity-80">Deletion will permanently remove this record from the local PWA database.</p>
+          </div>
+          <div className="flex gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              className="flex-1 h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-500/20"
+            >
+              Confirm Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Report Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Field Report"
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleEditSave} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">Pathogen ID</label>
+              <Input
+                value={editForm.diseaseType}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, diseaseType: e.target.value })}
+                required
+                className="h-12 bg-light-700/40 dark:bg-white/5 border-slate-200 dark:border-white/10 rounded-xl font-black uppercase"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">District</label>
+              <Input
+                value={editForm.district}
+                readOnly
+                className="h-12 bg-light-700/60 dark:bg-black/20 border-white/5 rounded-xl font-black text-primary-500 cursor-not-allowed uppercase"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">Date</label>
+              <Input
+                type="date"
+                value={editForm.date}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, date: e.target.value })}
+                required
+                className="h-12 bg-light-700/40 dark:bg-white/5 border-white/10 rounded-xl font-black"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">Cases</label>
+                <Input
+                  type="number"
+                  value={editForm.cases}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, cases: Number(e.target.value) })}
+                  required
+                  className="h-12 bg-light-700/40 dark:bg-white/5 border-white/10 rounded-xl font-black text-center"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">Deaths</label>
+                <Input
+                  type="number"
+                  value={editForm.deaths}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, deaths: Number(e.target.value) })}
+                  required
+                  className="h-12 bg-light-700/40 dark:bg-white/5 border-white/10 rounded-xl font-black text-center text-red-500"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-4 pt-4 border-t border-slate-100 dark:border-white/5">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsEditModalOpen(false)}
+              className="flex-1 h-14 rounded-xl font-black uppercase tracking-widest text-[10px]"
+            >
+              Discard Changes
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 h-14 rounded-xl primary-gradient text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-500/20"
+            >
+              Update Record
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <style>{`
         .animate-spin-slow {

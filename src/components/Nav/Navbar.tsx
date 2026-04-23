@@ -33,8 +33,8 @@ import { languages } from "@/lib/i18n"
 import { ModeToggle } from "./ModeToggle"
 import { useAuth } from "@/features/auth/context/AuthContext"
 import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
-import { Toaster } from "sonner"
+import { useTheme } from "next-themes"
+import { toast, Toaster } from "sonner"
 import { logoB64 } from "@/assets/logo-b64"
 
 export function Navbar() {
@@ -44,6 +44,7 @@ export function Navbar() {
   const navigate = useNavigate()
    const { user, logout } = useAuth()
    const { t, i18n } = useTranslation()
+   const { theme } = useTheme()
   
 
   const navItems = [
@@ -116,7 +117,13 @@ export function Navbar() {
               <span className="sr-only">{t("notifications")}</span>
             </Button>
             
-            <Toaster position="top-right" />
+            <Toaster 
+              position="top-right" 
+              richColors 
+              expand={true}
+              closeButton
+              theme={theme as "light" | "dark" | "system"}
+            />
             <ModeToggle />
 
             <div className="hidden sm:flex items-center gap-1 overflow-hidden rounded-full border border-border mr-2">

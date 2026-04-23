@@ -108,3 +108,20 @@ export async function syncQueuedHewReports(
     failed,
   };
 }
+
+export async function deleteQueuedHewReport(id: string) {
+  const current = await readQueue();
+  const next = current.filter((r) => r.id !== id);
+  await writeQueue(next);
+}
+
+export async function updateQueuedHewReport(id: string, updates: Partial<HewDraftReportInput>) {
+  const current = await readQueue();
+  const next = current.map((r) => {
+    if (r.id === id) {
+      return { ...r, ...updates, status: "pending" as const }; // Reset status to pending after edit
+    }
+    return r;
+  });
+  await writeQueue(next);
+}
