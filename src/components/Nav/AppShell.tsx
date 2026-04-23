@@ -1,11 +1,11 @@
 import { Navbar } from "@/components/Nav/Navbar";
-import { Chatbot } from "@/components/Chat/Chatbot";
+import { Chatbot } from "@/features/advisory/components/Chatbot";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:py-8">
+      <main className="w-full">
         {children}
       </main>
       <Chatbot />

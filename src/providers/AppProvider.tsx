@@ -3,7 +3,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from '@/lib/query-client';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../context/ThemeContext';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { get, set, del } from 'idb-keyval';
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getStoredRole, type UserRole } from "@/lib/auth";
+import { getStoredRole, type UserRole } from "@/features/auth/api/auth";
 
 type RoleGateProps = {
   allowedRoles: UserRole[];

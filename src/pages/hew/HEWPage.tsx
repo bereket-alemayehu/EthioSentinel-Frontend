@@ -1,40 +1,16 @@
+
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   getAllQueuedHewReports,
   queueHewReport,
-  syncQueuedHewReports,
   type HewDraftReportInput,
   type HewQueuedReport,
-} from "@/lib/offlineHewReports";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:3000";
-
-async function postReportToBackend(report: HewQueuedReport) {
-  const response = await fetch(`${API_BASE_URL}/api/reports`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      diseaseType: report.diseaseType,
-      cases: report.cases,
-      deaths: report.deaths,
-      date: report.date,
-      reportDate: report.date,
-      caseCount: report.cases,
-      deathCount: report.deaths,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Failed with status ${response.status}`);
-  }
-}
+} from "@/features/reporting/lib/offlineHewReports";
+import { useReportMutation, useSyncReportsMutation } from "@/features/reporting/hooks/useReporting";
 
 export default function HEWPage() {
+  const reportMutation = useReportMutation();
+  const syncMutation = useSyncReportsMutation();
   const [form, setForm] = useState<HewDraftReportInput>({
     diseaseType: "",
     cases: 0,
@@ -42,9 +18,10 @@ export default function HEWPage() {
     date: new Date().toISOString().slice(0, 10),
   });
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [queue, setQueue] = useState<HewQueuedReport[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>("");
+
+  const isSyncing = syncMutation.isPending;
 
   const pendingCount = useMemo(
     () => queue.filter((item) => item.status !== "synced").length,
@@ -62,17 +39,14 @@ export default function HEWPage() {
       return;
     }
 
-    setIsSyncing(true);
     try {
-      const result = await syncQueuedHewReports(postReportToBackend);
+      const result = await syncMutation.mutateAsync();
       await refreshQueue();
       setStatusMessage(
         `Sync completed. attempted=${result.attempted}, synced=${result.synced}, failed=${result.failed}`,
       );
     } catch {
       setStatusMessage("Sync failed. Pending reports remain queued.");
-    } finally {
-      setIsSyncing(false);
     }
   }
 
@@ -116,23 +90,32 @@ export default function HEWPage() {
       return;
     }
 
-    await queueHewReport({
-      diseaseType: form.diseaseType.trim(),
-      cases: form.cases,
-      deaths: form.deaths,
-      date: form.date,
-    });
+    try {
+      await reportMutation.mutateAsync({
+        diseaseType: form.diseaseType.trim(),
+        cases: form.cases,
+        deaths: form.deaths,
+        date: form.date,
+      });
+      setStatusMessage("Report successfully submitted.");
+      setForm((prev) => ({
+        ...prev,
+        diseaseType: "",
+        cases: 0,
+        deaths: 0,
+      }));
+    } catch {
+      await queueHewReport({
+        diseaseType: form.diseaseType.trim(),
+        cases: form.cases,
+        deaths: form.deaths,
+        date: form.date,
+      });
+      await refreshQueue();
+      setStatusMessage("Failed to reach server. Report saved to offline queue.");
+    }
 
-    await refreshQueue();
-    setStatusMessage("Report saved locally in IndexedDB.");
-    setForm((prev) => ({
-      ...prev,
-      diseaseType: "",
-      cases: 0,
-      deaths: 0,
-    }));
-
-    if (navigator.onLine) {
+    if (navigator.onLine && !reportMutation.isError) {
       await syncNow();
     }
   };

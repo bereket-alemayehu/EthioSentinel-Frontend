@@ -1,15 +1,5 @@
-import { useEffect, useState } from "react";
-
-type AlertItem = {
-  id: number;
-  disease: string | null;
-  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  advisory: string;
-  status: "Draft" | "Approved";
-};
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:3000";
+import { useAlerts, useUpdateAlertStatusMutation } from "@/features/admin/hooks/useAdmin";
+import type { AlertItem } from "@/features/admin/types";
 
 function severityBadgeClass(level: AlertItem["severity"]) {
   if (level === "CRITICAL" || level === "HIGH")
@@ -19,74 +9,22 @@ function severityBadgeClass(level: AlertItem["severity"]) {
 }
 
 export default function AdminPage() {
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const { data: alerts = [], isLoading: loading, error: queryError } = useAlerts();
+  const updateMutation = useUpdateAlertStatusMutation();
 
-  const loadAlerts = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/alerts`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to fetch alerts");
-      }
-
-      const json = (await response.json()) as { data?: AlertItem[] };
-      setAlerts(Array.isArray(json.data) ? json.data : []);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Unable to load alerts",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadAlerts();
-  }, []);
-
-  const updateAlertStatus = async (
+  const handleUpdate = async (
     id: number,
     action: "approve" | "reject",
   ) => {
-    setActionLoadingId(id);
-    setError("");
-
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/alerts/${id}/${action}`,
-        {
-          method: "PUT",
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Failed to ${action} alert`);
-      }
-
-      await loadAlerts();
-    } catch (actionError) {
-      setError(
-        actionError instanceof Error
-          ? actionError.message
-          : `Unable to ${action} alert`,
-      );
-    } finally {
-      setActionLoadingId(null);
+      await updateMutation.mutateAsync({ id, action });
+    } catch (err) {
+      console.error("Action failed", err);
     }
   };
+
+  const error = queryError?.message || updateMutation.error?.message || "";
+  const actionLoadingId = updateMutation.isPending ? updateMutation.variables?.id : null;
 
   return (
     <div className="p-6 space-y-6">
@@ -152,7 +90,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            void updateAlertStatus(alert.id, "approve")
+                            void handleUpdate(alert.id, "approve")
                           }
                           disabled={actionLoadingId === alert.id}
                           className="rounded-md bg-emerald-600 px-3 py-1.5 text-white disabled:opacity-50"
@@ -162,7 +100,7 @@ export default function AdminPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            void updateAlertStatus(alert.id, "reject")
+                            void handleUpdate(alert.id, "reject")
                           }
                           disabled={actionLoadingId === alert.id}
                           className="rounded-md bg-red-600 px-3 py-1.5 text-white disabled:opacity-50"

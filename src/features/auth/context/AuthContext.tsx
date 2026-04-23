@@ -1,17 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getStoredRole, setStoredRole, clearStoredRole, type UserRole } from "@/lib/auth";
-
-interface User {
-  name: string;
-  email: string;
-  role: UserRole;
-}
-
-interface AuthContextType {
-  user: User | null;
-  login: (role: UserRole) => void;
-  logout: () => void;
-}
+import { getStoredRole, setStoredRole, clearStoredRole } from "../api/auth";
+import type { UserRole, User, AuthContextType } from "../types";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

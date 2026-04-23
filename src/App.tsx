@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from './components/Nav/AppShell'
-import CitizenPage from './pages/CitizenPage'
-import HEWPage from './pages/HEWPage'
-import AdminPage from './pages/AdminPage'
-import LoginPage from './pages/LoginPage'
+import CitizenPage from './pages/citizen/CitizenPage'
+import HEWPage from './pages/hew/HEWPage'
+import AdminPage from './pages/admin/AdminPage'
+import LoginPage from './pages/auth/LoginPage'
 
 function App() {
   return (

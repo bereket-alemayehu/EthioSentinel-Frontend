@@ -1,20 +1,10 @@
 import { useMemo, useState } from "react";
-
-type SymptomResult = {
-  selectedSymptoms: string[];
-  probableDisease: string;
-  riskLevel: "LOW" | "MODERATE" | "HIGH";
-  advice: string;
-  disclaimer: string;
-  language: "ENGLISH" | "AMHARIC";
-};
+import { useSymptomCheckMutation } from "../hooks/useAdvisory";
+import type { SymptomResult } from "../types";
 
 type ChatMessage =
   | { id: string; sender: "user"; text: string }
   | { id: string; sender: "bot"; result: SymptomResult };
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || "http://localhost:3000";
 
 const SYMPTOMS = [
   "Fever",
@@ -36,7 +26,8 @@ function riskClass(level: SymptomResult["riskLevel"]) {
 export function SymptomChecker() {
   const [selected, setSelected] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const mutation = useSymptomCheckMutation();
+  const loading = mutation.isPending;
 
   const userPreview = useMemo(
     () =>
@@ -62,36 +53,13 @@ export function SymptomChecker() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    setLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/advisories/symptom-check`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            symptoms: selected,
-            language: "ENGLISH",
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "Failed to check symptoms");
-      }
-
-      const json = (await response.json()) as { data?: SymptomResult };
-      if (!json.data) {
-        throw new Error("Invalid response from symptom checker");
-      }
+      const data = await mutation.mutateAsync({ symptoms: selected });
 
       const botMessage: ChatMessage = {
         id: `${Date.now()}-b`,
         sender: "bot",
-        result: json.data,
+        result: data,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch {
@@ -109,8 +77,6 @@ export function SymptomChecker() {
         },
       };
       setMessages((prev) => [...prev, botMessage]);
-    } finally {
-      setLoading(false);
     }
   };
 
