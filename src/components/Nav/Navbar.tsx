@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { languages } from "@/lib/i18n"
 import { ModeToggle } from "./ModeToggle"
-import { useAuth } from "@/context/AuthContext"
+import { useAuth } from "@/features/auth/context/AuthContext"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Toaster } from "sonner"
