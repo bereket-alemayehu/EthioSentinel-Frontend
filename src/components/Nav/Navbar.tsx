@@ -74,8 +74,8 @@ export function Navbar() {
     }
   }
 
-  const userInitials = user?.name 
-    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+  const userInitials = user?.username 
+    ? user.username.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : "U"
 
   return (
@@ -142,7 +142,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 p-0 rounded-full ring-2 ring-primary-500/20 transition-all hover:ring-primary-500/40 focus:ring-primary-500/60">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="" alt={user.name || "User"} />
+                      <AvatarImage src="" alt={user.username || "User"} />
                       <AvatarFallback>{userInitials}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -151,7 +151,7 @@ export function Navbar() {
                   <DropdownMenuGroup>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.name}</p>
+                        <p className="text-sm font-medium leading-none">{user.username}</p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>

@@ -13,10 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, isLoading, error } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,15 +26,28 @@ export default function LoginPage() {
   });
   
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Role-based redirection logic
+  React.useEffect(() => {
+    if (user) {
+      const roleMap: Record<string, string> = {
+        'ADMIN': '/admin',
+        'HEW': '/hew',
+        'CITIZEN': '/citizen'
+      };
+      navigate(roleMap[user.role] || '/citizen', { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/citizen/dashboard');
-    }, 1500);
+    try {
+      await login(formData.email, formData.password);
+      toast.success('Successfully signed in');
+    } catch (err: any) {
+      toast.error(err.message || 'Login failed');
+    }
   };
 
   return (
@@ -75,6 +90,16 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5 relative">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-2 overflow-hidden"
+              >
+                <p className="text-xs text-red-200 font-medium text-center">{error}</p>
+              </motion.div>
+            )}
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">Email Address</label>
@@ -180,9 +205,9 @@ export default function LoginPage() {
 
         {/* Legal Links */}
         <div className="mt-12 text-center flex-center gap-4 text-[11px] text-white/30 uppercase tracking-[0.2em]">
-           <button className="hover:text-white transition-colors">Privacy Policy</button>
+           <button className="hover:text-white transition-colors px-2">Privacy Policy</button>
            <div className="w-1 h-1 bg-white/20 rounded-full" />
-           <button className="hover:text-white transition-colors">Terms of Service</button>
+           <button className="hover:text-white transition-colors px-2">Terms of Service</button>
         </div>
       </motion.div>
 

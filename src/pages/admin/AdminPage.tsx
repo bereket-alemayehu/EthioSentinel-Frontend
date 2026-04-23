@@ -27,7 +27,7 @@ export default function AdminPage() {
   const actionLoadingId = updateMutation.isPending ? updateMutation.variables?.id : null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-10 space-y-8 min-h-screen">
       <div>
         <h1 className="text-2xl font-bold font-heading text-foreground">
           Admin Alert Dashboard

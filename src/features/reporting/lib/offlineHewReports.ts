@@ -5,6 +5,7 @@ export type HewDraftReportInput = {
   cases: number;
   deaths: number;
   date: string;
+  district: string;
 };
 
 export type HewQueuedReport = HewDraftReportInput & {
@@ -45,6 +46,7 @@ export async function queueHewReport(input: HewDraftReportInput) {
   const next: HewQueuedReport = {
     id: makeId(),
     diseaseType: input.diseaseType,
+    district: input.district,
     cases: input.cases,
     deaths: input.deaths,
     date: input.date,
