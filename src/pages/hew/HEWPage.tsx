@@ -214,7 +214,7 @@ export default function HEWPage() {
   return (
     <div className="min-h-screen bg-light-800 dark:bg-dark-500 pb-12 font-sans overflow-x-hidden selection:bg-primary-500/20">
       {/* ── Premium Hero Section ────────────────────────────── */}
-      <div className="relative pt-24 pb-32 overflow-hidden primary-gradient">
+      <div className="relative pt-20 pb-20 sm:pt-24 sm:pb-32 overflow-hidden primary-gradient">
         {/* Dynamic mesh background for depth */}
         <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
         <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-white/10 rounded-full blur-[100px] animate-pulse" />
@@ -224,20 +224,20 @@ export default function HEWPage() {
             <Stethoscope className="w-56 h-56 text-white" />
         </div>
         
-        <div className="relative w-full px-10">
+        <div className="relative w-full px-4 sm:px-10">
             <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-3"
+                className="space-y-4 sm:space-y-3"
             >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs font-black uppercase tracking-widest">
                     <Activity className="w-3 h-3" />
                     Authorized Access
                 </div>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter font-heading">
+                <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter font-heading leading-[0.9]">
                     HEW Dashboard
                 </h1>
-                <p className="text-white/70 text-lg font-medium max-w-2xl leading-relaxed">
+                <p className="text-white/70 text-base sm:text-lg font-medium max-w-2xl leading-relaxed">
                     Health Extension Worker's Secure Command Center: <br className="hidden md:block" /> Real-time Disease Reporting & Monitoring System.
                 </p>
             </motion.div>
@@ -245,7 +245,7 @@ export default function HEWPage() {
       </div>
 
       {/* ── Main Content Grid ────────────────────────────────── */}
-      <div className="w-full px-10 -mt-20 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="w-full px-4 sm:px-10 -mt-20 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         
         {/* Left Column: Profile & Stats (4 units) */}
         <div className="lg:col-span-4 space-y-8">
@@ -253,7 +253,7 @@ export default function HEWPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="card-wrapper p-8 rounded-[2rem] border border-white/20 dark:border-white/5 backdrop-blur-xl shadow-2xl shadow-slate-900/5"
+                className="card-wrapper p-6 sm:p-8 rounded-[2rem] border border-white/20 dark:border-white/5 backdrop-blur-xl shadow-2xl shadow-slate-900/5"
             >
                 <div className="flex-start gap-5 mb-8">
                     <div className="w-16 h-16 rounded-2xl primary-gradient flex-center text-white shadow-xl ring-4 ring-primary-500/10">
@@ -291,7 +291,7 @@ export default function HEWPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="card-wrapper p-8 rounded-[2rem] border border-white/20 dark:border-white/5 backdrop-blur-xl shadow-2xl shadow-slate-900/5"
+                className="card-wrapper p-6 sm:p-8 rounded-[2rem] border border-white/20 dark:border-white/5 backdrop-blur-xl shadow-2xl shadow-slate-900/5"
             >
                 <div className="flex-between mb-6">
                     <h3 className="font-black text-dark-300 dark:text-white flex-start gap-3 uppercase tracking-tighter text-lg">
@@ -347,7 +347,7 @@ export default function HEWPage() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="card-wrapper p-10 rounded-[2.5rem] border border-white/25 dark:border-white/5 shadow-2xl shadow-slate-900/10 relative overflow-hidden"
+                className="card-wrapper p-6 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-white/25 dark:border-white/5 shadow-2xl shadow-slate-900/10 relative overflow-hidden"
             >
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
                     <PlusCircle className="w-48 h-48" />
@@ -444,41 +444,42 @@ export default function HEWPage() {
       </div>
 
       {/* ── Transmission Logs: Full Width Section ────────────────── */}
-      <div className="w-full px-10 mt-8">
+      <div className="w-full px-4 sm:px-10 mt-8">
         <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="card-wrapper p-10 rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl shadow-slate-900/5 min-h-[400px]"
+            className="card-wrapper p-6 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-2xl shadow-slate-900/5 min-h-[400px]"
         >
-            <div className="flex-between mb-10">
-                <div className="flex-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex-center text-primary-500 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex-center text-primary-500 shadow-sm shrink-0">
                         <TableIcon className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-dark-300 dark:text-white tracking-tighter uppercase">Transmission Logs</h2>
-                        <p className="text-[10px] text-light-500 font-black uppercase tracking-widest mt-1">Localized PWA Database Context</p>
+                        <h2 className="text-xl sm:text-2xl font-black text-dark-300 dark:text-white tracking-tighter uppercase whitespace-nowrap">Transmission Logs</h2>
+                        <p className="text-[9px] sm:text-[10px] text-light-500 font-black uppercase tracking-widest mt-1">Localized PWA Database Context</p>
                     </div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 border-t sm:border-t-0 border-white/5 pt-4 sm:pt-0">
                     {pendingCount > 0 && (
-                        <div className="px-4 py-2 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
-                            {pendingCount} Needs Synchronization
+                        <div className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-600 text-[9px] sm:text-[10px] font-black uppercase tracking-widest animate-pulse border border-amber-500/20">
+                            {pendingCount} Needs Sync
                         </div>
                     )}
                     <Button 
                         onClick={refreshQueue}
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-xl hover:bg-primary-500/10"
+                        className="rounded-xl h-10 w-10 hover:bg-primary-500/10"
                     >
                         <RefreshCw className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left border-separate border-spacing-y-4">
                     <thead>
                         <tr className="text-light-500 dark:text-light-700 text-[10px] font-black uppercase tracking-widest">
@@ -582,6 +583,89 @@ export default function HEWPage() {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+                <AnimatePresence mode="popLayout">
+                    {queue.map((item) => (
+                        <motion.div
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            key={item.id}
+                            className="bg-light-700/30 dark:bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4"
+                        >
+                            <div className="flex-between">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] text-light-500 font-black uppercase tracking-widest">Identification</p>
+                                    <h3 className="text-lg font-black text-dark-300 dark:text-white uppercase tracking-tighter">{item.diseaseType}</h3>
+                                </div>
+                                {item.status === 'synced' ? (
+                                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-500 flex-center border border-emerald-500/20">
+                                        <CheckCircle2 className="w-4 h-4" />
+                                    </div>
+                                ) : (
+                                    <div className="h-8 w-8 rounded-full bg-amber-500/10 text-amber-500 flex-center border border-amber-500/20">
+                                        <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 py-4 border-y border-white/5">
+                                <div className="text-center">
+                                    <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Cases</p>
+                                    <p className="text-xl font-black text-primary-500">{item.cases}</p>
+                                </div>
+                                <div className="text-center border-l border-white/5">
+                                    <p className="text-[9px] text-light-500 font-black uppercase tracking-widest mb-1">Deaths</p>
+                                    <p className="text-xl font-black text-red-500">{item.deaths}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-between text-[10px] font-bold text-light-500">
+                                <div className="flex items-center gap-1.5 uppercase">
+                                    <MapPin className="w-3 h-3 text-primary-500" />
+                                    {item.district}
+                                </div>
+                                <div>
+                                    {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                {item.status !== 'synced' && (
+                                    <Button 
+                                        onClick={() => handleRetry()}
+                                        className="flex-1 h-10 rounded-xl bg-amber-500 text-white font-black uppercase tracking-widest text-[9px]"
+                                    >
+                                        Retry Sync
+                                    </Button>
+                                )}
+                                <Button 
+                                    onClick={() => handleEdit(item)}
+                                    variant="secondary"
+                                    className="flex-1 h-10 rounded-xl font-black uppercase tracking-widest text-[9px]"
+                                >
+                                    Edit
+                                </Button>
+                                <Button 
+                                    onClick={() => handleDelete(item.id)}
+                                    className="h-10 w-10 flex-center bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
+                {queue.length === 0 && (
+                    <div className="py-20 text-center">
+                        <Database className="w-16 h-16 text-light-700/50 dark:text-white/5 mx-auto mb-4" />
+                        <p className="text-[10px] text-light-500 font-black uppercase tracking-widest">No records identified</p>
+                    </div>
+                )}
             </div>
         </motion.div>
       </div>

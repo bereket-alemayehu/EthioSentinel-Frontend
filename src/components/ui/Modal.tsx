@@ -31,7 +31,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className={cn(
-              "relative w-full max-w-lg overflow-hidden rounded-[2rem] bg-white p-8 shadow-2xl dark:bg-dark-400 border border-white/20 dark:border-white/5",
+              "relative w-full max-w-lg overflow-hidden rounded-[2rem] bg-white p-6 sm:p-8 shadow-2xl dark:bg-dark-400 border border-white/20 dark:border-white/5",
               className
             )}
           >
