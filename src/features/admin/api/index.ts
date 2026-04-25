@@ -12,3 +12,23 @@ export const updateAlertStatus = async (
 ): Promise<void> => {
   await api.put(`/alerts/${id}/${action}`);
 };
+
+export interface GeoStat {
+  district: string;
+  totalCases: number;
+  totalDeaths: number;
+  reportCount: number;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export const getGeoStats = async (filters: {
+  startDate?: string;
+  endDate?: string;
+  diseaseType?: string;
+} = {}): Promise<GeoStat[]> => {
+  const response = await api.get<{ data: GeoStat[] }>('/analytics/geo-stats', {
+    params: filters,
+  });
+  return response.data.data;
+};
