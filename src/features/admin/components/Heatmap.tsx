@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 import { MapContainer, TileLayer, useMap, Popup, CircleMarker } from "react-leaflet";
 import type { GeoStat } from "../api";
+import { Info, Map as MapIcon, Database } from "lucide-react";
 
 // Fix default marker icon issue in Leaflet + React
 // @ts-ignore
@@ -92,12 +93,30 @@ interface HeatmapLayerProps {
   data: GeoStat[];
 }
 
-function HeatmapLayer({ data }: HeatmapLayerProps) {
+// Color palette for different diseases
+const DISEASE_COLORS: Record<string, string> = {
+  malaria: "#0d9488", // Teal
+  cholera: "#ea580c", // Orange
+  ebola: "#dc2626",   // Red
+  typhoid: "#9333ea", // Purple
+  measles: "#2563eb", // Blue
+  yellow_fever: "#eab308", // Yellow
+};
+
+const DEFAULT_COLOR = "#64748b"; // Slate
+
+function getDiseaseColor(disease: string): string {
+  const key = disease.toLowerCase().replace(/\s+/g, '_');
+  return DISEASE_COLORS[key] || DEFAULT_COLOR;
+}
+
+function HeatmapLayer({ data }: { data: GeoStat[] }) {
   const map = useMap();
   const heatLayerRef = useRef<any>(null);
-
+  
   useEffect(() => {
-    setTimeout(() => { map.invalidateSize(); }, 100);
+    if (!map) return;
+    const timer = setTimeout(() => { map.invalidateSize(); }, 100);
     if (!map || !data.length) return;
 
     const valid = data.filter((d) => d.latitude !== null && d.longitude !== null);
@@ -123,7 +142,10 @@ function HeatmapLayer({ data }: HeatmapLayerProps) {
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 });
     }
 
-    return () => { if (heatLayerRef.current) map.removeLayer(heatLayerRef.current); };
+    return () => { 
+      clearTimeout(timer);
+      if (heatLayerRef.current && map) map.removeLayer(heatLayerRef.current); 
+    };
   }, [map, data]);
 
   // Aggregate by district to show one marker per district (may have multiple disease rows)
@@ -296,6 +318,9 @@ export function Heatmap({ data }: HeatmapLayerProps) {
       </div>
     );
   }
+
+  // Get unique diseases for the legend
+  const uniqueDiseases = Array.from(new Set(data.map(d => d.diseaseType)));
 
   return (
     <div className="h-[600px] w-full rounded-xl overflow-hidden border shadow-inner bg-slate-50 relative z-0">
