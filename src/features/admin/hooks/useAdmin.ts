@@ -4,6 +4,7 @@ import { getAlerts, updateAlertStatus } from '../api';
 export const adminKeys = {
   all: ['admin'] as const,
   alerts: () => [...adminKeys.all, 'alerts'] as const,
+  geoStats: (filters: any) => [...adminKeys.all, 'geoStats', filters] as const,
 };
 
 export const useAlerts = () => {
@@ -21,5 +22,16 @@ export const useUpdateAlertStatusMutation = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
     },
+  });
+};
+
+export const useGeoStats = (filters: {
+  startDate?: string;
+  endDate?: string;
+  diseaseType?: string;
+} = {}) => {
+  return useQuery({
+    queryKey: adminKeys.geoStats(filters),
+    queryFn: () => import('../api').then((api) => api.getGeoStats(filters)),
   });
 };
