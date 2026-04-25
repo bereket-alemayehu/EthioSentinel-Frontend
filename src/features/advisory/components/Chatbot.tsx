@@ -7,11 +7,15 @@ import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 
 // Initialize once at module level — not per message — to avoid cold-start delay
 const _apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 const _genAI = _apiKey ? new GoogleGenerativeAI(_apiKey) : null;
-const _model = _genAI?.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) ?? null;
+const _model = _genAI?.getGenerativeModel({ 
+  model: "gemini-1.5-flash" 
+}) ?? null;
 
 const SYSTEM_PROMPT = `
 You are the EthioSentinel Assistant, a specialized healthcare and system navigator for the EthioSentinel platform in Ethiopia. 
@@ -188,15 +192,20 @@ export function Chatbot() {
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: text.text,
+        text: text,
         sender: 'bot',
         timestamp: new Date(),
       };
       setMessages((prev: Message[]) => [...prev, botMessage]);
     } catch (error: any) {
-      console.error("Chatbot Error:", error);
+      console.error("Chatbot Error Detail:", error);
       
       let friendlyError = "I'm having trouble connecting to my brain right now. Please try again in a moment.";
+      
+      // More descriptive error if possible
+      if (error?.message) {
+        console.error("Error Message:", error.message);
+      }
       
       if (error?.message?.includes("401")) {
         friendlyError = i18n.language === 'am'

@@ -22,12 +22,12 @@ export const checkSymptoms = async (
   return response.data.data;
 };
 
-export const getChatHistory = async (): Promise<ChatMessage[]> => {
+export const getChatHistoryApi = async (): Promise<ChatMessage[]> => {
   const response = await api.get<{ data: ChatMessage[] }>('/advisories/chat/history');
   return response.data.data;
 };
 
-export const sendChatMessage = async (
+export const sendChatMessageApi = async (
   message: string,
   language: 'ENGLISH' | 'AMHARIC'
 ): Promise<ChatMessage> => {
@@ -38,6 +38,6 @@ export const sendChatMessage = async (
   return response.data.data;
 };
 
-export const clearChatHistory = async (): Promise<void> => {
+export const clearChatHistoryApi = async (): Promise<void> => {
   await api.delete('/advisories/chat/history');
 };

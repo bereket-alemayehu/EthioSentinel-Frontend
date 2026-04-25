@@ -15,6 +15,7 @@ export const updateAlertStatus = async (
 
 export interface GeoStat {
   district: string;
+  diseaseType: string;
   totalCases: number;
   totalDeaths: number;
   reportCount: number;
