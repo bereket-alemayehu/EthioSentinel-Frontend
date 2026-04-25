@@ -6,12 +6,26 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import {
-  clearChatHistory as clearChatHistoryApi,
-  getChatHistory as getChatHistoryApi,
-  sendChatMessage as sendChatMessageApi,
-} from '@/features/advisory/api';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Initialize once at module level — not per message — to avoid cold-start delay
+const _apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const _genAI = _apiKey ? new GoogleGenerativeAI(_apiKey) : null;
+const _model = _genAI?.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) ?? null;
+
+const SYSTEM_PROMPT = `
+You are the EthioSentinel Assistant, a specialized healthcare and system navigator for the EthioSentinel platform in Ethiopia. 
+Your goal is to help health workers, admins, and public users with:
+1. System navigation (Analytics, Reports, User Management).
+2. Healthcare data interpretation (malaria outbreaks, vaccination trends, etc.).
+3. Technical assistance (Offline capabilities, PWA features).
+4. Health Advisory (Provide general health information, preventive measures, and wellness advice for the public).
+
+- Always provide a medical disclaimer: "I am an AI assistant, not a doctor. Please consult a healthcare professional for clinical diagnosis or treatment."
+- Be professional, concise, and healthcare-focused. 
+- If asked about real-time data you don't have access to, guide the user to the "Analytics" or "Reports" sections of the portal.
+- Respond in the language requested (English or Amharic).
+`;
 
 interface Message {
   id: string;
@@ -132,11 +146,45 @@ export function Chatbot() {
     setInput('');
     setIsLoading(true);
 
+    if (!_model) {
+      console.error("EthioSentinel: VITE_GEMINI_API_KEY is missing from .env");
+      setMessages((prev: Message[]) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: "Configuration Error: API Key is missing. Please ensure VITE_GEMINI_API_KEY is set in your .env file and restart the server.",
+        sender: 'bot',
+        timestamp: new Date(),
+      }]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const text = await sendChatMessageApi(
-        userMessage.text,
-        i18n.language === 'am' ? 'AMHARIC' : 'ENGLISH'
-      );
+      const model = _model;
+
+      const chatHistory = messages
+        .filter((_, i) => i > 0)
+        .map((m: Message) => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }],
+        }));
+
+      const chat = model.startChat({
+        history: chatHistory,
+        generationConfig: {
+          maxOutputTokens: 1000,
+        },
+      });
+
+      const currentLanguage = i18n.language === 'am' ? 'Amharic' : 'English';
+      const promptText = chatHistory.length === 0 
+        ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Always respond in ${currentLanguage}.\n\nUser Question: ${input}`
+        : `(Respond in ${currentLanguage}) ${input}`;
+      
+      const result = await chat.sendMessage(promptText);
+      const response = await result.response;
+      const text = response.text();
+
+      if (!text) throw new Error("Empty response");
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
