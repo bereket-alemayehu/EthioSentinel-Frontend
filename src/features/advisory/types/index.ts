@@ -40,3 +40,11 @@ export interface SymptomResult {
   disclaimer: string;
   language: "ENGLISH" | "AMHARIC";
 }
+
+export interface ChatMessage {
+  id: string;
+  role: "USER" | "ASSISTANT";
+  text: string;
+  language: "ENGLISH" | "AMHARIC";
+  createdAt: string | Date;
+}

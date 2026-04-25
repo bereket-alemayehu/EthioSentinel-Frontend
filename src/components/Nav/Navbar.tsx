@@ -59,11 +59,11 @@ export function Navbar() {
   const handleLogout = async () => {
     try {
       await logout();
-      toast.success(t("logoutSuccess") || "Logged out successfully");
+      toast.success(t("logoutSuccess"));
       navigate("/login");
     } catch (err) {
       console.error("Logout error:", err);
-      toast.error("Logout failed");
+      toast.error(t("logoutFailed"));
     }
   }
 

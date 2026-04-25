@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAlerts, useUpdateAlertStatusMutation, useGeoStats } from "@/features/admin/hooks/useAdmin";
 import type { AlertItem } from "@/features/admin/types";
 import { Heatmap } from "@/features/admin/components/Heatmap";
+import { useTranslation } from "react-i18next";
 
 function severityBadgeClass(level: AlertItem["severity"]) {
   if (level === "CRITICAL" || level === "HIGH")
@@ -11,6 +12,7 @@ function severityBadgeClass(level: AlertItem["severity"]) {
 }
 
 export default function AdminPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"alerts" | "map">("alerts");
   const { data: alerts = [], isLoading: loading, error: queryError } = useAlerts();
   const { data: geoStats = [], isLoading: geoLoading } = useGeoStats();
@@ -35,10 +37,10 @@ export default function AdminPage() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading text-slate-900 tracking-tight">
-            Admin Oversight
+            {t("adminOversight")}
           </h1>
           <p className="mt-2 text-slate-500">
-            Monitor regional health status and manage system alerts.
+            {t("adminOversightDesc")}
           </p>
         </div>
 
@@ -51,7 +53,7 @@ export default function AdminPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Alert Approvals
+            {t("alertApprovals")}
           </button>
           <button
             onClick={() => setActiveTab("map")}
@@ -61,7 +63,7 @@ export default function AdminPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Disease Heatmap
+            {t("diseaseHeatmap")}
           </button>
         </div>
       </div>
@@ -81,11 +83,11 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 sticky top-0 backdrop-blur-sm border-b z-10">
                 <tr className="text-left">
-                  <th className="px-6 py-4 font-semibold text-slate-700">Disease</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">Severity</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">Advisory Content</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700">Status</th>
-                  <th className="px-6 py-4 font-semibold text-slate-700 text-right">Actions</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700">{t("disease")}</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700">{t("severity")}</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700">{t("advisoryContent")}</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700">{t("status")}</th>
+                  <th className="px-6 py-4 font-semibold text-slate-700 text-right">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -94,20 +96,20 @@ export default function AdminPage() {
                     <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
                       <div className="flex flex-col items-center gap-2">
                         <div className="h-5 w-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                        Loading recent alerts...
+                        {t("loadingRecentAlerts")}
                       </div>
                     </td>
                   </tr>
                 ) : alerts.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                      No pending alerts requiring action.
+                      {t("noPendingAlerts")}
                     </td>
                   </tr>
                 ) : (
                   alerts.map((alert) => (
                     <tr key={alert.id} className="hover:bg-slate-50/50 transition-colors align-top">
-                      <td className="px-6 py-4 font-medium text-slate-900">{alert.disease ?? "Unknown"}</td>
+                      <td className="px-6 py-4 font-medium text-slate-900">{alert.disease ?? t("unknown")}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ring-slate-200/50 ${severityBadgeClass(alert.severity)}`}
@@ -136,7 +138,7 @@ export default function AdminPage() {
                             disabled={actionLoadingId === alert.id}
                             className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 shadow-sm transition-all"
                           >
-                            {actionLoadingId === alert.id && updateMutation.variables?.action === 'approve' ? '...' : 'Approve'}
+                            {actionLoadingId === alert.id && updateMutation.variables?.action === 'approve' ? '...' : t("approve")}
                           </button>
                           <button
                             type="button"
@@ -146,7 +148,7 @@ export default function AdminPage() {
                             disabled={actionLoadingId === alert.id}
                             className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 active:bg-red-800 disabled:opacity-50 shadow-sm transition-all"
                           >
-                            {actionLoadingId === alert.id && updateMutation.variables?.action === 'reject' ? '...' : 'Reject'}
+                            {actionLoadingId === alert.id && updateMutation.variables?.action === 'reject' ? '...' : t("reject")}
                           </button>
                         </div>
                       </td>
@@ -161,15 +163,15 @@ export default function AdminPage() {
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col items-center text-center justify-center space-y-2">
-              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Reports</span>
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{t("totalReports")}</span>
               <span className="text-3xl font-bold text-slate-900">{geoStats.reduce((acc, curr) => acc + curr.reportCount, 0)}</span>
             </div>
             <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col items-center text-center justify-center space-y-2 border-l-4 border-l-red-500">
-              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">High Risk Areas</span>
-              <span className="text-3xl font-bold text-slate-900">{geoStats.filter(s => s.totalCases > 50).length} Districts</span>
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{t("highRiskAreas")}</span>
+              <span className="text-3xl font-bold text-slate-900">{geoStats.filter(s => s.totalCases > 50).length} {t("districts")}</span>
             </div>
             <div className="bg-white p-6 rounded-2xl border shadow-sm flex flex-col items-center text-center justify-center space-y-2">
-              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Cumulative Cases</span>
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">{t("cumulativeCases")}</span>
               <span className="text-3xl font-bold text-slate-900">{geoStats.reduce((acc, curr) => acc + curr.totalCases, 0)}</span>
             </div>
           </div>
@@ -179,7 +181,7 @@ export default function AdminPage() {
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-[2px] rounded-2xl transition-all">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-8 w-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
-                  <span className="text-sm font-bold text-slate-700 animate-pulse">Rendering Geo-Spatial Data...</span>
+                  <span className="text-sm font-bold text-slate-700 animate-pulse">{t("renderingGeo")}</span>
                 </div>
               </div>
             )}
@@ -190,13 +192,13 @@ export default function AdminPage() {
           
           <div className="bg-slate-900 text-white p-8 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1">
-              <h3 className="text-xl font-bold">Spatial Intelligence Activated</h3>
+              <h3 className="text-xl font-bold">{t("spatialIntelligence")}</h3>
               <p className="text-slate-400 text-sm max-w-lg">
-                The heatmap visualizes disease density across Ethiopia by aggregating case counts from the Python anomaly detection engine. Use this to prioritize intervention resources.
+                {t("spatialIntelligenceDesc")}
               </p>
             </div>
             <button className="bg-white text-slate-900 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm">
-              Export Geo-Data
+              {t("exportGeoData")}
             </button>
           </div>
         </div>

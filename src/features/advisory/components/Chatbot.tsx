@@ -6,21 +6,12 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const SYSTEM_PROMPT = `
-You are the EthioSentinel Assistant, a specialized healthcare and system navigator for the EthioSentinel platform in Ethiopia. 
-Your goal is to help health workers, admins, and public users with:
-1. System navigation (Analytics, Reports, User Management).
-2. Healthcare data interpretation (malaria outbreaks, vaccination trends, etc.).
-3. Technical assistance (Offline capabilities, PWA features).
-4. Health Advisory (Provide general health information, preventive measures, and wellness advice for the public).
-
-- Always provide a medical disclaimer: "I am an AI assistant, not a doctor. Please consult a healthcare professional for clinical diagnosis or treatment."
-- Be professional, concise, and healthcare-focused. 
-- If asked about real-time data you don't have access to, guide the user to the "Analytics" or "Reports" sections of the portal.
-- Respond in the language requested (English or Amharic).
-`;
+import { useAuth } from '@/features/auth/context/AuthContext';
+import {
+  clearChatHistory as clearChatHistoryApi,
+  getChatHistory as getChatHistoryApi,
+  sendChatMessage as sendChatMessageApi,
+} from '@/features/advisory/api';
 
 interface Message {
   id: string;
@@ -31,6 +22,7 @@ interface Message {
 
 export function Chatbot() {
   const { i18n } = useTranslation();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   
   // Initial message localized
@@ -40,33 +32,14 @@ export function Chatbot() {
       : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
   };
 
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('ethiosentinel_chat_history');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map((m: any) => ({
-          ...m,
-          timestamp: new Date(m.timestamp)
-        }));
-      } catch (e) {
-        console.error("EthioSentinel: Failed to parse chat history", e);
-      }
-    }
-    return [
-      {
-        id: '1',
-        text: getGreeting(),
-        sender: 'bot',
-        timestamp: new Date(),
-      },
-    ];
-  });
-
-  // Persist messages to localStorage
-  useEffect(() => {
-    localStorage.setItem('ethiosentinel_chat_history', JSON.stringify(messages));
-  }, [messages]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      text: getGreeting(),
+      sender: 'bot',
+      timestamp: new Date(),
+    },
+  ]);
 
   // Update greeting if language changes and no other messages exist
   useEffect(() => {
@@ -77,6 +50,46 @@ export function Chatbot() {
       }]);
     }
   }, [i18n.language]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!user) {
+        setMessages([{
+          id: 'guest-greeting',
+          text: getGreeting(),
+          sender: 'bot',
+          timestamp: new Date(),
+        }]);
+        return;
+      }
+
+      try {
+        const history = await getChatHistoryApi();
+        if (history.length === 0) {
+          setMessages([{
+            id: 'welcome',
+            text: getGreeting(),
+            sender: 'bot',
+            timestamp: new Date(),
+          }]);
+          return;
+        }
+
+        setMessages(history.map((item) => ({
+          id: item.id,
+          text: item.text,
+          sender: item.role === 'USER' ? 'user' : 'bot',
+          timestamp: new Date(item.createdAt),
+        })));
+      } catch (error) {
+        console.error('Failed to load chat history', error);
+      }
+    };
+
+    if (isOpen) {
+      loadHistory();
+    }
+  }, [isOpen, user]);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +109,18 @@ export function Chatbot() {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    if (!user) {
+      setMessages((prev: Message[]) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: i18n.language === 'am'
+          ? 'እባክዎ ቻት ለመጠቀም መጀመሪያ ይግቡ።'
+          : 'Please log in to use personalized chat support.',
+        sender: 'bot',
+        timestamp: new Date(),
+      }]);
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
@@ -107,51 +132,15 @@ export function Chatbot() {
     setInput('');
     setIsLoading(true);
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      console.error("EthioSentinel: VITE_GEMINI_API_KEY is missing from .env");
-      setMessages((prev: Message[]) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: "Configuration Error: API Key is missing. Please ensure VITE_GEMINI_API_KEY is set in your .env file and restart the server.",
-        sender: 'bot',
-        timestamp: new Date(),
-      }]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
-
-      const chatHistory = messages
-        .filter((_, i) => i > 0)
-        .map((m: Message) => ({
-          role: m.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }],
-        }));
-
-      const chat = model.startChat({
-        history: chatHistory,
-        generationConfig: {
-          maxOutputTokens: 1000,
-        },
-      });
-
-      const currentLanguage = i18n.language === 'am' ? 'Amharic' : 'English';
-      const promptText = chatHistory.length === 0 
-        ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Always respond in ${currentLanguage}.\n\nUser Question: ${input}`
-        : `(Respond in ${currentLanguage}) ${input}`;
-      
-      const result = await chat.sendMessage(promptText);
-      const response = await result.response;
-      const text = response.text();
-
-      if (!text) throw new Error("Empty response");
+      const text = await sendChatMessageApi(
+        userMessage.text,
+        i18n.language === 'am' ? 'AMHARIC' : 'ENGLISH'
+      );
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: text,
+        text: text.text,
         sender: 'bot',
         timestamp: new Date(),
       };
@@ -161,12 +150,10 @@ export function Chatbot() {
       
       let friendlyError = "I'm having trouble connecting to my brain right now. Please try again in a moment.";
       
-      if (error?.message?.includes("API_KEY_INVALID")) {
-        friendlyError = "The provided API Key appears to be invalid. Please check your .env file.";
-      } else if (error?.message?.includes("User location is not supported")) {
-        friendlyError = "I'm sorry, but my AI services are not currently available in your region.";
-      } else if (error?.message?.includes("quota")) {
-        friendlyError = "I'm a bit overwhelmed with requests right now. Please wait a minute and try again.";
+      if (error?.message?.includes("401")) {
+        friendlyError = i18n.language === 'am'
+          ? "ቻት ለመጠቀም ዳግም ይግቡ።"
+          : "Please sign in again to continue the chat.";
       }
 
       const errorMessage: Message = {
@@ -181,7 +168,14 @@ export function Chatbot() {
     }
   };
 
-  const clearHistory = () => {
+  const clearHistory = async () => {
+    if (user) {
+      try {
+        await clearChatHistoryApi();
+      } catch (error) {
+        console.error('Failed to clear chat history', error);
+      }
+    }
     const initialMessage: Message = {
       id: Date.now().toString(),
       text: getGreeting(),
@@ -192,7 +186,7 @@ export function Chatbot() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end">
+    <div className="fixed bottom-6 right-6 z-9999 flex flex-col items-end">
       {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (

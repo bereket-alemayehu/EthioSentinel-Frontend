@@ -28,8 +28,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export default function HEWPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const reportMutation = useReportMutation();
   const syncMutation = useSyncReportsMutation();
@@ -78,19 +80,19 @@ export default function HEWPage() {
 
   async function syncNow() {
     if (!navigator.onLine) {
-      toast.error("You are currently offline. Sync deferred.");
+      toast.error(t("offlineMode"));
       return;
     }
 
     try {
       const result = await syncMutation.mutateAsync();
       await refreshQueue();
-      toast.success(`Sync finished: ${result.synced} reports uploaded.`);
+      toast.success(`${t("syncActive")}: ${result.synced} ${t("totalReports")}`);
       if (result.failed > 0) {
-        toast.warning(`${result.failed} reports failed to sync.`);
+        toast.warning(`${result.failed} ${t("retrySync")}`);
       }
     } catch {
-      toast.error("Sync process failed. Please try again later.");
+      toast.error(t("logoutFailed"));
     }
   }
 
@@ -99,13 +101,13 @@ export default function HEWPage() {
 
     const onOnline = () => {
       setIsOnline(true);
-      toast.info("Connection restored. Initiating background sync...");
+      toast.info(t("syncActive"));
       void syncNow();
     };
 
     const onOffline = () => {
       setIsOnline(false);
-      toast.warning("Connection lost. Reports will be queued locally.");
+      toast.warning(t("offlineMode"));
     };
 
     window.addEventListener("online", onOnline);
@@ -121,12 +123,12 @@ export default function HEWPage() {
     e.preventDefault();
 
     if (!form.diseaseType.trim()) {
-      toast.error("Disease type is required.");
+      toast.error(`${t("disease")} ${t("status")}`);
       return;
     }
 
     if (!form.district.trim()) {
-      toast.error("District is required.");
+      toast.error(`${t("district")} ${t("status")}`);
       return;
     }
 
@@ -138,7 +140,7 @@ export default function HEWPage() {
 
     try {
       await reportMutation.mutateAsync(payload);
-      toast.success("Report submitted successfully.");
+      toast.success(t("secureSubmission"));
       setForm((prev) => ({
         ...prev,
         diseaseType: "",
@@ -148,7 +150,7 @@ export default function HEWPage() {
     } catch {
       await queueHewReport(payload);
       await refreshQueue();
-      toast.info("Offline: Report has been queued for sync.");
+      toast.info(t("pendingUpload"));
     }
 
     if (navigator.onLine && !reportMutation.isError) {
@@ -170,7 +172,7 @@ export default function HEWPage() {
       await refreshQueue();
       setIsDeleteModalOpen(false);
       setSelectedReport(null);
-      toast.success("Log entry deleted.");
+      toast.success(t("deleteEntry"));
     }
   };
 
@@ -193,21 +195,21 @@ export default function HEWPage() {
       await refreshQueue();
       setIsEditModalOpen(false);
       setSelectedReport(null);
-      toast.success("Report updated successfully.");
+      toast.success(t("updateRecord"));
     }
   };
 
   const handleRetry = async () => {
     if (!navigator.onLine) {
-        toast.error("Offline: Cannot retry sync right now.");
+        toast.error(t("offlineMode"));
         return;
     }
     try {
         await syncMutation.mutateAsync();
         await refreshQueue();
-        toast.success("Retry attempt finished.");
+        toast.success(t("retrySync"));
     } catch {
-        toast.error("Retry failed.");
+        toast.error(t("logoutFailed"));
     }
   };
 
@@ -232,13 +234,13 @@ export default function HEWPage() {
             >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs font-black uppercase tracking-widest">
                     <Activity className="w-3 h-3" />
-                    Authorized Access
+                    {t("authorizedAccess")}
                 </div>
                 <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter font-heading leading-[0.9]">
-                    HEW Dashboard
+                    {t("hewDashboard")}
                 </h1>
                 <p className="text-white/70 text-base sm:text-lg font-medium max-w-2xl leading-relaxed">
-                    Health Extension Worker's Secure Command Center: <br className="hidden md:block" /> Real-time Disease Reporting & Monitoring System.
+                    {t("hewHeroDesc")}
                 </p>
             </motion.div>
         </div>
@@ -261,7 +263,7 @@ export default function HEWPage() {
                     </div>
                     <div>
                         <h3 className="text-2xl font-black text-dark-300 dark:text-white tracking-tight uppercase">{user?.username}</h3>
-                        <p className="text-xs text-light-500 font-black uppercase tracking-[0.2em]">Medical Extension Officer</p>
+                        <p className="text-xs text-light-500 font-black uppercase tracking-[0.2em]">{t("healthWorker")}</p>
                     </div>
                 </div>
 
@@ -271,18 +273,18 @@ export default function HEWPage() {
                             <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex-center text-primary-500">
                                 <MapPin className="w-4 h-4" />
                             </div>
-                            <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">Operational District</span>
+                            <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">{t("operationalDistrict")}</span>
                         </div>
-                        <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.assignedDistrict || 'NOT ASSIGNED'}</span>
+                        <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.assignedDistrict || t("notAssigned")}</span>
                     </div>
                     <div className="group flex-between p-4 rounded-2xl bg-light-700/50 dark:bg-white/5 border border-white/10 transition-all hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
                         <div className="flex-start gap-4">
                             <div className="w-8 h-8 rounded-lg bg-accent-500/10 flex-center text-accent-500">
                                 <Activity className="w-4 h-4" />
                             </div>
-                            <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">Supervisory Region</span>
+                            <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">{t("supervisoryRegion")}</span>
                         </div>
-                        <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.region || 'NATIONAL'}</span>
+                        <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.region || t("national")}</span>
                     </div>
                 </div>
             </motion.div>
@@ -296,24 +298,24 @@ export default function HEWPage() {
                 <div className="flex-between mb-6">
                     <h3 className="font-black text-dark-300 dark:text-white flex-start gap-3 uppercase tracking-tighter text-lg">
                         <Database className="w-6 h-6 text-primary-500" />
-                        Infrastructure
+                        {t("infrastructure")}
                     </h3>
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${isOnline ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
                         <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isOnline ? 'bg-emerald-600' : 'bg-amber-600'}`} />
-                        {isOnline ? 'Sync Active' : 'Offline Mode'}
+                        {isOnline ? t("syncActive") : t("offlineMode")}
                     </div>
                 </div>
 
                 <p className="text-sm text-light-500 dark:text-light-700 mb-8 font-medium leading-relaxed">
                     {isOnline 
-                        ? "Real-time synchronization secure. All records are currently mirrored to the central node." 
-                        : "Network connectivity unstable. Reports are being cached locally and will auto-sync upon restoration."}
+                        ? t("syncDescriptionOnline")
+                        : t("syncDescriptionOffline")}
                 </p>
 
                 <div className="space-y-4">
                     <div className="flex-between text-[10px] font-black uppercase tracking-[0.15em] text-light-500">
-                        <span>Transmission Queue</span>
-                        <span className={pendingCount > 0 ? 'text-primary-500' : ''}>{pendingCount} Units</span>
+                        <span>{t("transmissionQueue")}</span>
+                        <span className={pendingCount > 0 ? 'text-primary-500' : ''}>{pendingCount} {t("units")}</span>
                     </div>
                     <div className="w-full bg-light-700 dark:bg-white/10 h-3 rounded-full overflow-hidden shadow-inner p-0.5">
                         <div 
@@ -333,7 +335,7 @@ export default function HEWPage() {
                          ) : (
                             <RefreshCw className="w-5 h-5" />
                          )}
-                         {isSyncing ? "FORGING CONNECTION..." : "INITIATE MANUAL SYNC"}
+                         {isSyncing ? t("syncingNow") : t("manualSync")}
                     </Button>
                 </div>
             </motion.div>

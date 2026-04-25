@@ -5,6 +5,7 @@ import { SymptomChecker } from "@/features/advisory/components/SymptomChecker";
 import type { District } from "@/features/advisory/types";
 import type { RiskLevel } from "@/types";
 import L from "leaflet";
+import { useTranslation } from "react-i18next";
 
 // Fix Leaflet icons in Vite
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -93,6 +94,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
 }
 
 export default function CitizenPage() {
+  const { t } = useTranslation();
   const { data: regions = [], isLoading: regionsLoading, error: regionsError } = useRegions();
   const { data: advisories = [], isLoading: advisoriesLoading, error: advisoriesError } = useAdvisories();
 
@@ -153,7 +155,7 @@ export default function CitizenPage() {
           lat,
           lng,
           riskLevel: highest.riskLevel,
-          diseaseName: highest.disease?.name ?? "Unknown disease",
+          diseaseName: highest.disease?.name ?? t("unknown"),
           advisoryTitle: highest.title,
           advisoryContent: highest.content,
         });
@@ -197,7 +199,7 @@ export default function CitizenPage() {
   return (
     <div className="w-full min-h-screen">
       {/* ── Hero Header ─────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0f6b7c] via-[#0a525f] to-[#2e8b57] text-white">
+      <div className="relative overflow-hidden bg-linear-to-br from-[#0f6b7c] via-primary-600 to-[#2e8b57] text-white">
         {/* decorative blobs */}
         <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
         <div className="pointer-events-none absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-2xl" />
@@ -207,21 +209,20 @@ export default function CitizenPage() {
             <div>
               <div className="flex items-center gap-2 text-white/70 text-sm font-medium mb-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                Live health monitoring
+                {t("liveHealthMonitoring")}
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-                Citizen Health Dashboard
+                {t("citizenDashboardTitle")}
               </h1>
               <p className="mt-1.5 text-white/75 text-sm sm:text-base max-w-xl">
-                Real-time disease surveillance, regional advisories, and
-                AI-powered symptom triage for Ethiopia.
+                {t("citizenDashboardDesc")}
               </p>
             </div>
             {/* Region / District Selectors */}
             <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-white/70 uppercase tracking-wider">
-                  Region
+                  {t("region")}
                 </label>
                 <select
                   value={selectedRegionId}
@@ -244,7 +245,7 @@ export default function CitizenPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-white/70 uppercase tracking-wider">
-                  District
+                  {t("district")}
                 </label>
                 <select
                   value={selectedDistrictId}
@@ -252,7 +253,7 @@ export default function CitizenPage() {
                   className="min-w-[160px] rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/40 transition cursor-pointer"
                 >
                   <option value="" className="bg-primary-600 text-white">
-                    All Districts
+                    {t("allDistricts")}
                   </option>
                   {districtOptions.map((d: District) => (
                     <option
@@ -272,28 +273,28 @@ export default function CitizenPage() {
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               {
-                label: "Total Advisories",
+                label: t("totalAdvisories"),
                 value: totalAdvisories,
                 icon: "📋",
-                sub: "Approved & active",
+                sub: t("approvedAndActive"),
               },
               {
-                label: "Regions Monitored",
+                label: t("regionsMonitored"),
                 value: totalRegions,
                 icon: "🗺️",
-                sub: "Across Ethiopia",
+                sub: t("acrossEthiopia"),
               },
               {
-                label: "High Risk Events",
+                label: t("highRiskEvents"),
                 value: highCount,
                 icon: "⚠️",
-                sub: "Require attention",
+                sub: t("requireAttention"),
               },
               {
-                label: "Critical Alerts",
+                label: t("criticalAlerts"),
                 value: criticalCount,
                 icon: "🚨",
-                sub: "Immediate action needed",
+                sub: t("immediateActionNeeded"),
               },
             ].map((stat) => (
               <div
@@ -327,7 +328,7 @@ export default function CitizenPage() {
           <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-5 py-4 text-red-700 dark:text-red-400">
             <span className="text-xl">⚠️</span>
             <div>
-              <p className="font-semibold">Unable to load dashboard data</p>
+              <p className="font-semibold">{t("unableLoadDashboardData")}</p>
               <p className="text-sm mt-0.5 opacity-80">{error}</p>
             </div>
           </div>
@@ -337,9 +338,9 @@ export default function CitizenPage() {
         <div className="mb-6 flex items-center gap-1 rounded-2xl bg-muted/60 p-1 w-fit border border-border">
           {(
             [
-              { id: "map", label: "Risk Map", icon: "🗺️" },
-              { id: "advisories", label: "Advisories", icon: "📋" },
-              { id: "symptom", label: "Symptom Check", icon: "🩺" },
+              { id: "map", label: t("riskMap"), icon: "🗺️" },
+              { id: "advisories", label: t("advisories"), icon: "📋" },
+              { id: "symptom", label: t("symptomCheck"), icon: "🩺" },
             ] as const
           ).map((tab) => (
             <button
@@ -382,10 +383,10 @@ export default function CitizenPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-card px-6 py-4">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">
-                    District Risk Heatmap
+                    {t("districtRiskHeatmap")}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    {error ? "Showing base map (data currently unavailable)" : "Click a dot to view advisory details · radius = risk severity"}
+                    {error ? t("unableLoadDashboardData") : t("mapClickHint")}
                   </p>
                 </div>
                 {!error && (
@@ -459,7 +460,7 @@ export default function CitizenPage() {
                 </MapContainer>
                 
                 {error && (
-                  <div className="absolute inset-0 z-[1000] flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 z-1000 flex items-center justify-center pointer-events-none">
                     <div className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-6 py-4 shadow-xl text-center max-w-sm pointer-events-auto">
                        <p className="text-sm font-bold text-red-600 mb-1">Data Connection Offline</p>
                        <p className="text-xs text-muted-foreground">The map is functional, but regional risk markers could not be loaded from the server.</p>
@@ -472,7 +473,7 @@ export default function CitizenPage() {
                 <div className="flex flex-col items-center justify-center gap-2 py-8 bg-card text-center">
                   <span className="text-4xl opacity-40">📍</span>
                   <p className="text-sm text-muted-foreground">
-                    No district risk data available for the current selection.
+                    {t("noDistrictRiskData")}
                   </p>
                 </div>
               )}
@@ -487,11 +488,10 @@ export default function CitizenPage() {
               <div className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-border bg-card py-20 text-center">
                 <span className="text-5xl opacity-40">📭</span>
                 <p className="text-lg font-semibold text-foreground">
-                  No approved advisories
+                  {t("noApprovedAdvisories")}
                 </p>
                 <p className="text-sm text-muted-foreground max-w-sm">
-                  There are no active health advisories for the selected region
-                  and district at this time.
+                  {t("noActiveAdvisoriesNow")}
                 </p>
               </div>
             ) : (
@@ -540,7 +540,7 @@ export default function CitizenPage() {
                             <span>
                               {item.district?.name
                                 ? item.district.name
-                                : "Region-wide advisory"}
+                                : t("regionWideAdvisory")}
                             </span>
                           </div>
                           <span
@@ -561,13 +561,12 @@ export default function CitizenPage() {
         {/* ── TAB: Symptom Checker ──────────────────────────────── */}
         {activeTab === "symptom" && (
           <div className="rounded-3xl border border-border overflow-hidden shadow-sm">
-            <div className="bg-gradient-to-r from-[#0f6b7c]/5 to-[#2e8b57]/5 px-6 py-5 border-b border-border">
+            <div className="bg-linear-to-r from-[#0f6b7c]/5 to-[#2e8b57]/5 px-6 py-5 border-b border-border">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span>🩺</span> AI Symptom Checker
+                <span>🩺</span> {t("aiSymptomChecker")}
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Select your symptoms for an instant AI health assessment. Not a
-                substitute for professional medical advice.
+                {t("symptomCheckerDesc")}
               </p>
             </div>
             <div className="p-6 bg-card">

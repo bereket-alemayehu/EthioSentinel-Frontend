@@ -15,8 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error } = useAuth();
   const [formData, setFormData] = useState({
@@ -44,9 +46,9 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(formData.email, formData.password);
-      toast.success('Successfully signed in');
+      toast.success(t('signIn'));
     } catch (err: any) {
-      toast.error(err.message || 'Login failed');
+      toast.error(err.message || t('logoutFailed'));
     }
   };
 
@@ -85,7 +87,7 @@ export default function LoginPage() {
               <ShieldCheck className="w-8 h-8 text-white" />
             </motion.div>
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">EthioSentinel</h1>
-            <p className="text-white/70 text-sm font-medium">Health Monitoring & Response System</p>
+            <p className="text-white/70 text-sm font-medium">{t('appTagline')}</p>
           </div>
 
           {/* Form */}
@@ -102,7 +104,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">Email Address</label>
+                <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">{t('emailAddress')}</label>
                 <div className="relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-white/80 transition-colors">
                     <Mail className="w-4.5 h-4.5" />
@@ -120,9 +122,9 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex-between">
-                  <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">Password</label>
+                  <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">{t('password')}</label>
                   <Link to="/auth/forgot-password"  className="text-xs font-semibold text-white/60 hover:text-white transition-colors">
-                    Forgot password?
+                    {t('forgotPassword')}
                   </Link>
                 </div>
                 <div className="relative group">
@@ -157,7 +159,7 @@ export default function LoginPage() {
                 onChange={(e) => setFormData({...formData, rememberMe: e.target.checked})}
               />
               <label htmlFor="remember" className="text-sm font-medium text-white/60 select-none cursor-pointer">
-                Keep me signed in
+                {t('rememberMe')}
               </label>
             </div>
 
@@ -169,11 +171,11 @@ export default function LoginPage() {
               {isLoading ? (
                 <div className="flex-center gap-2">
                   <div className="w-5 h-5 border-2 border-[#0f6b7c]/20 border-t-[#0f6b7c] rounded-full animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>{t('authenticating')}</span>
                 </div>
               ) : (
                 <div className="flex-center gap-2">
-                  <span>Sign In</span>
+                  <span>{t('signIn')}</span>
                   <ArrowRight className="w-4.5 h-4.5" />
                 </div>
               )}
@@ -183,9 +185,9 @@ export default function LoginPage() {
           {/* Footer info */}
           <div className="mt-8 pt-6 border-t border-white/10 text-center relative z-10">
             <p className="text-sm text-white/50">
-              Don't have an account? {' '}
+              {t('noAccount')} {' '}
               <Link to="/auth/register" className="text-white font-bold hover:underline">
-                Create Account
+                {t('createAccount')}
               </Link>
             </p>
           </div>
@@ -195,19 +197,19 @@ export default function LoginPage() {
         <div className="mt-8 flex justify-center gap-6">
           <div className="flex-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
             <HeartPulse className="w-3.5 h-3.5 text-accent-500" />
-            <span className="text-[10px] uppercase tracking-widest text-white/80 font-bold">Secure Patient Data</span>
+            <span className="text-[10px] uppercase tracking-widest text-white/80 font-bold">{t('securePatientData')}</span>
           </div>
           <div className="flex-center gap-2 bg-white/5 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
             <Stethoscope className="w-3.5 h-3.5 text-accent-500" />
-            <span className="text-[10px] uppercase tracking-widest text-white/80 font-bold">Ministry Approved</span>
+            <span className="text-[10px] uppercase tracking-widest text-white/80 font-bold">{t('ministryApproved')}</span>
           </div>
         </div>
 
         {/* Legal Links */}
         <div className="mt-12 text-center flex-center gap-4 text-[11px] text-white/30 uppercase tracking-[0.2em]">
-           <button className="hover:text-white transition-colors px-2">Privacy Policy</button>
+           <button className="hover:text-white transition-colors px-2">{t('privacyPolicy')}</button>
            <div className="w-1 h-1 bg-white/20 rounded-full" />
-           <button className="hover:text-white transition-colors px-2">Terms of Service</button>
+           <button className="hover:text-white transition-colors px-2">{t('termsOfService')}</button>
         </div>
       </motion.div>
 
