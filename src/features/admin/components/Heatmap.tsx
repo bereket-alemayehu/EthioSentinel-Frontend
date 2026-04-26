@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
 import { MapContainer, TileLayer, useMap, Popup, CircleMarker } from "react-leaflet";
 import type { GeoStat } from "../api";
-import { Info, Map as MapIcon, Database } from "lucide-react";
+import { Database } from "lucide-react";
 
 // Fix default marker icon issue in Leaflet + React
 // @ts-ignore
@@ -236,65 +236,67 @@ function HeatmapLayer({ data }: { data: GeoStat[] }) {
                 </div>
 
                 {/* Disease breakdown */}
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
-                  🧬 Diseases Reported
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}>
+                  <Database size={12} className="text-teal-600" />
+                  Diseases Reported
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {rows.map((r, i) => (
-                    <div key={i} style={{
-                      background: "#f1f5f9",
-                      borderRadius: 8,
-                      padding: "6px 8px",
-                      borderLeft: `3px solid ${getSeverityColor(r.totalCases)}`,
-                    }}>
-                      {/* Disease name */}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
-                        🦠 {r.diseaseType}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {rows.map((r, i) => {
+                    const diseaseColor = getDiseaseColor(r.diseaseType);
+                    return (
+                      <div key={i} style={{
+                        background: "#fff",
+                        borderRadius: 10,
+                        padding: "8px",
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                        position: "relative",
+                        overflow: "hidden"
+                      }}>
+                        {/* Color accent bar */}
+                        <div style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 4,
+                          backgroundColor: diseaseColor
+                        }} />
+
+                        {/* Title & Badge */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, paddingLeft: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#1e293b" }}>{r.diseaseType}</span>
+                          <span style={{ 
+                            fontSize: 9, 
+                            padding: "1px 6px", 
+                            borderRadius: 4, 
+                            background: `${diseaseColor}15`, 
+                            color: diseaseColor,
+                            fontWeight: 700,
+                            textTransform: "uppercase"
+                          }}>
+                            {getSeverity(r.totalCases)}
+                          </span>
+                        </div>
+
+                        {/* Mini Stats Grid */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, paddingLeft: 6 }}>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b" }}>{r.totalCases}</div>
+                            <div style={{ fontSize: 8, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.025em" }}>Cases</div>
+                          </div>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: r.totalDeaths > 0 ? "#dc2626" : "#64748b" }}>{r.totalDeaths}</div>
+                            <div style={{ fontSize: 8, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.025em" }}>Deaths</div>
+                          </div>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#0d9488" }}>{r.reportCount}</div>
+                            <div style={{ fontSize: 8, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.025em" }}>Alerts</div>
+                          </div>
+                        </div>
                       </div>
-                      {/* Stats row: cases + deaths */}
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <div style={{
-                          flex: 1,
-                          background: "#fff",
-                          borderRadius: 6,
-                          padding: "3px 6px",
-                          textAlign: "center",
-                          border: "1px solid #e2e8f0",
-                        }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: getSeverityColor(r.totalCases) }}>
-                            {r.totalCases}
-                          </div>
-                          <div style={{ fontSize: 9, color: "#64748b" }}>Cases</div>
-                        </div>
-                        <div style={{
-                          flex: 1,
-                          background: "#fff",
-                          borderRadius: 6,
-                          padding: "3px 6px",
-                          textAlign: "center",
-                          border: "1px solid #e2e8f0",
-                        }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: r.totalDeaths > 0 ? "#dc2626" : "#94a3b8" }}>
-                            {r.totalDeaths}
-                          </div>
-                          <div style={{ fontSize: 9, color: "#64748b" }}>Deaths</div>
-                        </div>
-                        <div style={{
-                          flex: 1,
-                          background: "#fff",
-                          borderRadius: 6,
-                          padding: "3px 6px",
-                          textAlign: "center",
-                          border: "1px solid #e2e8f0",
-                        }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f6b7c" }}>
-                            {r.reportCount}
-                          </div>
-                          <div style={{ fontSize: 9, color: "#64748b" }}>Reports</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </Popup>
