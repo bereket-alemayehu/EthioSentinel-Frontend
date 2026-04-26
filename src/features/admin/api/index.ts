@@ -7,14 +7,33 @@ export const getAlerts = async (): Promise<AlertItem[]> => {
 };
 
 export const updateAlertStatus = async (
-  id: number,
+  id: number | string,
   action: 'approve' | 'reject'
 ): Promise<void> => {
   await api.put(`/alerts/${id}/${action}`);
 };
 
+export const getAdvisoryDrafts = async (page = 1, limit = 50): Promise<any> => {
+  const response = await api.get('/advisories/drafts', { params: { page, limit } });
+  return response.data.data?.data || [];
+};
+
+export const getApprovedAdvisories = async (page = 1, limit = 50): Promise<any> => {
+  const response = await api.get('/advisories/approved-list', { params: { page, limit } });
+  return response.data.data?.data || [];
+};
+
+export const updateAdvisoryStatus = async (
+  id: string,
+  action: 'approve' | 'reject' | 'withdraw'
+): Promise<void> => {
+  const endpoint = action === 'withdraw' ? 'withdraw' : action;
+  await api.patch(`/advisories/${id}/${endpoint}`);
+};
+
 export interface GeoStat {
   district: string;
+  diseaseType: string;
   totalCases: number;
   totalDeaths: number;
   reportCount: number;

@@ -30,6 +30,7 @@ export interface Advisory {
   district?: {
     name: string;
   };
+  createdAt?: string | Date;
 }
 
 export interface SymptomResult {

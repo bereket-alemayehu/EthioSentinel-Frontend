@@ -17,7 +17,7 @@ export const useAlerts = () => {
 export const useUpdateAlertStatusMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: number; action: 'approve' | 'reject' }) =>
+    mutationFn: (args: { id: number | string; action: 'approve' | 'reject' }) =>
       updateAlertStatus(args.id, args.action),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
