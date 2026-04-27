@@ -32,6 +32,7 @@ import { HEWDashboardSidebar } from "@/features/reporting/components/HEWDashboar
 import { ReportingForm } from "@/features/reporting/components/ReportingForm";
 import { ReportHistoryTable } from "@/features/reporting/components/ReportHistoryTable";
 import { EditReportModal } from "@/features/reporting/components/EditReportModal";
+import { HEWSummaryCard } from "@/features/reporting/components/HEWSummaryCard";
 
 export default function HEWPage() {
   const { t } = useTranslation();
@@ -108,6 +109,26 @@ export default function HEWPage() {
     () => queue.filter((item) => item.status !== "synced").length,
     [queue],
   );
+
+  const dailyThroughput = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Count only queued reports from today
+    const queuedToday = queue.filter(r => {
+      const rDate = r.date ? new Date(r.date).toISOString().split('T')[0] : "";
+      return rDate === today;
+    }).length;
+
+    // Use the global count from the server response
+    const archivedTodayCount = serverResult?.dailyCount || 0;
+
+    return queuedToday + archivedTodayCount;
+  }, [queue, serverResult?.dailyCount]);
+
+  const activeSessionInfo = useMemo(() => ({
+    userName: user?.username || "User",
+    district: user?.assignedDistrict || "General",
+  }), [user]);
 
   async function refreshQueue() {
     const current = await getAllQueuedHewReports();
@@ -286,7 +307,7 @@ export default function HEWPage() {
           syncNow={syncNow}
         />
 
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-6">
             <ReportingForm 
               t={t}
               form={form}
@@ -295,6 +316,17 @@ export default function HEWPage() {
               diseaseOptions={diseaseOptions}
               isOnline={isOnline}
               reportMutationPending={reportMutation.isPending}
+            />
+            
+            <HEWSummaryCard 
+              isOnline={isOnline}
+              pendingCount={pendingCount}
+              isSyncing={isSyncing}
+              syncNow={syncNow}
+              t={t}
+              dailyThroughput={dailyThroughput}
+              activeSessionInfo={activeSessionInfo}
+              isThroughputLoading={isLoadingHistory}
             />
         </div>
       </div>

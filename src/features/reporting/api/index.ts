@@ -20,6 +20,7 @@ export const getReports = async (page: number = 1, limit: number = 10): Promise<
   page: number;
   limit: number;
   totalPages: number;
+  dailyCount: number;
 }> => {
   const response = await api.get(`/reports?page=${page}&limit=${limit}`);
   return response.data.data;
