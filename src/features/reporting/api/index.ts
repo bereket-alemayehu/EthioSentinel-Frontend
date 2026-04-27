@@ -13,3 +13,34 @@ export const postReport = async (report: HewDraftReportInput): Promise<void> => 
     deathCount: report.deaths,
   });
 };
+
+export const getReports = async (page: number = 1, limit: number = 10): Promise<{
+  reports: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> => {
+  const response = await api.get(`/reports?page=${page}&limit=${limit}`);
+  return response.data.data;
+};
+
+export const updateServerReport = async ({ id, ...data }: { id: string; diseaseType?: string; diseaseId?: number; district?: string; cases?: number; deaths?: number; date?: string }): Promise<void> => {
+  await api.patch(`/reports/${id}`, {
+    diseaseType: data.diseaseType,
+    diseaseId: data.diseaseId,
+    district: data.district,
+    caseCount: data.cases,
+    deathCount: data.deaths,
+    reportDate: data.date,
+  });
+};
+
+export const deleteServerReport = async (id: string): Promise<void> => {
+  await api.delete(`/reports/${id}`);
+};
+
+export const getDiseases = async (): Promise<any[]> => {
+  const response = await api.get('/diseases');
+  return response.data.data;
+};

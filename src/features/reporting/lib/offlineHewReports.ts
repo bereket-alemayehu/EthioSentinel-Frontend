@@ -2,6 +2,7 @@ import { createStore, get, set } from "idb-keyval";
 
 export type HewDraftReportInput = {
   diseaseType: string;
+  diseaseId?: number;
   cases: number;
   deaths: number;
   date: string;
@@ -45,6 +46,7 @@ export async function queueHewReport(input: HewDraftReportInput) {
   const current = await readQueue();
   const next: HewQueuedReport = {
     id: makeId(),
+    diseaseId: input.diseaseId,
     diseaseType: input.diseaseType,
     district: input.district,
     cases: input.cases,
