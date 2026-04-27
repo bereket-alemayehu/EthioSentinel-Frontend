@@ -1,4 +1,4 @@
-import { api } from '@/lib/axios';
+import { api } from '@/shared/lib/axios';
 import type { AlertItem } from '../types';
 
 export const getAlerts = async (): Promise<AlertItem[]> => {

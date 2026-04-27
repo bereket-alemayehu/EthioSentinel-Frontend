@@ -1,4 +1,4 @@
-import type { RiskLevel } from "@/types";
+import type { RiskLevel } from "@/shared/types";
 
 export interface District {
   id: number;

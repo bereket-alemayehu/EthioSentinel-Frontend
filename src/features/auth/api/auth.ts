@@ -1,12 +1,13 @@
-import { api } from "@/lib/axios";
-import type { User, UserRole } from "../types";
-export type { User, UserRole };
+import { api } from "@/shared/lib/axios";
+import { type UserRole } from "@/shared/types";
+import type { User } from "../types";
+export type { User };
 
 
 const AUTH_ROLE_KEY = "ethio-role";
 const AUTH_USER_KEY = "ethio-user";
 
-export const privilegedRoles: UserRole[] = ["HEW", "ADMIN"];
+export const privilegedRoles: UserRole[] = ["hew", "admin"];
 
 export interface AuthResponse {
   success: boolean;
@@ -38,7 +39,7 @@ export async function getMeApi(): Promise<User> {
 export function getStoredRole(): UserRole | null {
   if (typeof window === "undefined") return null;
   const role = window.localStorage.getItem(AUTH_ROLE_KEY);
-  return (role as UserRole) || null;
+  return (role?.toLowerCase() as UserRole) || null;
 }
 
 export function setStoredRole(role: UserRole) {

@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { PlusCircle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 
 interface ReportingFormProps {
   t: any;

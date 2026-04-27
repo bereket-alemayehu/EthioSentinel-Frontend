@@ -7,7 +7,7 @@ import {
   BadgeCheck,
   TrendingUp
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/components/ui/button";
 
 interface HEWSummaryCardProps {
   isOnline: boolean;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { postReport, getReports, updateServerReport, deleteServerReport, getDiseases } from '../api';
-import { syncQueuedHewReports } from '../lib/offlineHewReports';
+import { syncQueuedHewReports } from '../services/offlineStorage';
 
 export const useReports = (page: number = 1, limit: number = 10) => {
   return useQuery({
@@ -45,6 +45,6 @@ export const useDiseases = () => {
   return useQuery({
     queryKey: ['diseases'],
     queryFn: getDiseases,
-    staleTime: 24 * 60 * 60 * 1000, // Master data stays fresh for 24 hours
+    staleTime: 5 * 1000, // Reduced from 24h to 5s for better responsiveness
   });
 };
