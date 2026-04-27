@@ -7,7 +7,7 @@ import {
   Database,
   RefreshCw
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/components/ui/button";
 
 interface HEWDashboardSidebarProps {
   user: any;

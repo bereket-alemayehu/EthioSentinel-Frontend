@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { cn } from '@/shared/utils/cn';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 
 // Chat messages interface

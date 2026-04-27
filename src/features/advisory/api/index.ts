@@ -1,4 +1,4 @@
-import { api } from '@/lib/axios';
+import { api } from '@/shared/lib/axios';
 import type { Region, Advisory, SymptomResult, ChatMessage } from '@/features/advisory/types';
 
 export const getRegions = async (): Promise<Region[]> => {

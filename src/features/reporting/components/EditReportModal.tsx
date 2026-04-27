@@ -1,8 +1,8 @@
 import React from "react";
-import { Modal } from "@/components/ui/Modal";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Modal } from "@/shared/components/ui/Modal";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
+import { Input } from "@/shared/components/ui/input";
+import { Button } from "@/shared/components/ui/button";
 
 interface EditReportModalProps {
   isOpen: boolean;

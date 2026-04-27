@@ -1,5 +1,5 @@
-import { api } from '@/lib/axios';
-import type { HewDraftReportInput } from '../lib/offlineHewReports';
+import { api } from '@/shared/lib/axios';
+import type { HewDraftReportInput } from '../services/offlineStorage';
 
 export const postReport = async (report: HewDraftReportInput): Promise<void> => {
   await api.post('/reports', {
