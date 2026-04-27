@@ -23,7 +23,7 @@ export type HewSyncResult = {
   failed: number;
 };
 
-const store = createStore("ethiosentinel-pwa", "hew-offline-reports");
+const store = createStore("ethiosentinel-reports", "reports-store");
 const QUEUE_KEY = "queue";
 
 function makeId() {
