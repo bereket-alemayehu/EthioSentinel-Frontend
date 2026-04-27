@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { 
   Stethoscope,
   Activity,
-  Trash2,
 } from "lucide-react";
 import {
   getAllQueuedHewReports,
@@ -135,36 +134,61 @@ export default function HEWPage() {
     setQueue(current);
   }
 
-  async function syncNow() {
+  async function syncNow(silent = false) {
     if (!navigator.onLine) {
-      toast.error(t("offlineMode"));
+      if (!silent) toast.error(t("offlineMode"));
       return;
     }
+
+    // Capture pending count before sync to decide if we should show success toast
+    const preSyncPending = pendingCount;
 
     try {
       const result = await syncMutation.mutateAsync();
       await refreshQueue();
       await refetchServerReports();
-      toast.success(`${t("syncActive")}: ${result.synced} ${t("totalReports")}`);
+      
+      if (!silent && result.synced > 0) {
+        toast.success(`${t("syncActive")}: ${result.synced} ${t("totalReports")}`);
+      } else if (!silent && preSyncPending > 0 && result.synced === 0) {
+        // If we had pending reports but none were synced (and not silent), show info
+        toast.info(t("syncDescriptionOffline"));
+      }
     } catch {
-      toast.error(t("syncDescriptionOffline"));
+      if (!silent) toast.error(t("syncDescriptionOffline"));
     }
   }
 
   useEffect(() => {
     void refreshQueue();
+    
+    // Initial sync on mount if online
+    if (navigator.onLine) {
+      void syncNow(true);
+    }
+
     const onOnline = () => {
       setIsOnline(true);
-      void syncNow();
+      void syncNow(true); // Silent sync on reconnection
     };
     const onOffline = () => setIsOnline(false);
+
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
+
+    // Background sync heartbeat every 30 seconds if online
+    const interval = setInterval(() => {
+      if (navigator.onLine && pendingCount > 0) {
+        void syncNow(true);
+      }
+    }, 30000);
+
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
+      clearInterval(interval);
     };
-  }, []);
+  }, [pendingCount]); // Refetch when pendingCount changes to keep interval aware
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -7,6 +7,8 @@ export type { User };
 const AUTH_ROLE_KEY = "ethio-role";
 const AUTH_USER_KEY = "ethio-user";
 
+export * from "../services/offlineAuth";
+
 export const privilegedRoles: UserRole[] = ["hew", "admin"];
 
 export interface AuthResponse {

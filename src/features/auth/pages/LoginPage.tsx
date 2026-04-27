@@ -33,12 +33,13 @@ export default function LoginPage() {
   // Role-based redirection logic
   React.useEffect(() => {
     if (user) {
+      const roleNormalized = user.role.toUpperCase();
       const roleMap: Record<string, string> = {
         'ADMIN': '/admin',
         'HEW': '/hew',
         'CITIZEN': '/citizen'
       };
-      navigate(roleMap[user.role] || '/citizen', { replace: true });
+      navigate(roleMap[roleNormalized] || '/citizen', { replace: true });
     }
   }, [user, navigate]);
 
