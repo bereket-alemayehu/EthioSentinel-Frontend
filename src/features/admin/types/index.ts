@@ -1,5 +1,5 @@
 export type AlertItem = {
-  id: number;
+  id: string;
   disease: string | null;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   advisory: string;
