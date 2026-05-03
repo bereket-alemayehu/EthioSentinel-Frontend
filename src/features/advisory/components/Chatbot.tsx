@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useGrammarCheck } from 'react-grammar-kit';
 import { MessageCircle, X, Send, Bot, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/shared/components/ui/button';
@@ -6,7 +7,7 @@ import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/utils/cn';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 
@@ -89,7 +90,14 @@ export function Chatbot() {
     }
   }, [isOpen, user]);
 
-  const [input, setInput] = useState('');
+  const {
+    text: input,
+    setText: setInput,
+    suggestions,
+    loading: grammarLoading,
+    applyFix,
+    highlightedText,
+  } = useGrammarCheck('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -306,25 +314,59 @@ export function Chatbot() {
             </div>
 
             {/* Input */}
-            <form
-              onSubmit={handleSend}
-              className="p-4 border-t bg-background flex gap-2 items-center"
-            >
-              <Input
-                placeholder="Type your message..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl"
-              />
-              <Button 
-                type="submit" 
-                size="icon" 
-                disabled={!input.trim() || isLoading}
-                className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
+            <div className="border-t bg-background">
+              {/* Grammar suggestion preview */}
+              {input.trim() && suggestions.length > 0 && (
+                <div className="px-4 pt-3 pb-1">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      ✏️ Grammar suggestions
+                    </span>
+                    <span className="text-[10px] bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-bold px-2 py-0.5 rounded-full">
+                      {suggestions.length} {suggestions.length === 1 ? 'issue' : 'issues'}
+                    </span>
+                  </div>
+                  <div
+                    className="text-sm leading-relaxed rounded-xl bg-muted/40 border border-border/50 px-3 py-2 min-h-[36px] select-none"
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {highlightedText(applyFix)}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Click a highlighted word to apply the fix</p>
+                </div>
+              )}
+              {grammarLoading && input.trim() && (
+                <div className="px-4 pt-2 pb-0">
+                  <span className="text-[10px] text-muted-foreground animate-pulse">Checking grammar…</span>
+                </div>
+              )}
+              <form
+                onSubmit={handleSend}
+                className="p-4 flex gap-2 items-center"
               >
-                <Send className="w-4 h-4 ml-0.5" />
-              </Button>
-            </form>
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Type your message..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl pr-10"
+                  />
+                  {input.trim() && suggestions.length > 0 && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center pointer-events-none">
+                      {suggestions.length > 9 ? '9+' : suggestions.length}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!input.trim() || isLoading}
+                  className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
+                >
+                  <Send className="w-4 h-4 ml-0.5" />
+                </Button>
+              </form>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
