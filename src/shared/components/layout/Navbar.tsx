@@ -36,6 +36,8 @@ import { useTranslation } from "react-i18next"
 import { useTheme } from "next-themes"
 import { toast, Toaster } from "sonner"
 import { logoB64 } from "@/assets/logo-b64"
+import { useNotifications } from "@/shared/hooks/useNotifications"
+import { markNotificationsReadNow } from "@/shared/lib/notificationsPrefs"
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -45,6 +47,12 @@ export function Navbar() {
    const { user, logout } = useAuth()
    const { t, i18n } = useTranslation()
    const { theme } = useTheme()
+   const {
+     items: notificationItems,
+     unreadCount,
+     enabled: notificationsEnabled,
+     isLoading: notificationsLoading,
+   } = useNotifications()
   
 
   const navItems = [
@@ -84,7 +92,18 @@ export function Navbar() {
       <div className="w-full flex h-16 items-center justify-between px-6">
         {/* Left: Logo & Desktop Nav */}
         <div className="flex items-center gap-10">
-          <Link to={user ? `/${user.role}` : "/"} className="flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] active:scale-95">
+          <Link
+            to={
+              user
+                ? user.role === "admin"
+                  ? "/admin"
+                  : user.role === "hew"
+                    ? "/hew"
+                    : "/citizen"
+                : "/"
+            }
+            className="flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] active:scale-95"
+          >
             <img 
               src={logoB64} 
               alt="Logo" 
@@ -111,12 +130,92 @@ export function Navbar() {
           </form>
 
           <div className="flex items-center gap-1 md:gap-2">
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-primary-500" />
-              <span className="sr-only">{t("notifications")}</span>
-            </Button>
-            
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (open && user && notificationsEnabled) {
+                  markNotificationsReadNow()
+                }
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative h-9 w-9"
+                  aria-label={t("notifications")}
+                >
+                  <Bell className="h-5 w-5" />
+                  {user && notificationsEnabled && unreadCount > 0 ? (
+                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
+                  ) : null}
+                  <span className="sr-only">{t("notifications")}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-80 sm:w-96 p-0" align="end">
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-sm font-bold">{t("notifications")}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      markNotificationsReadNow()
+                      toast.success(t("markAllReadDone"))
+                    }}
+                  >
+                    {t("markAllRead")}
+                  </Button>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {!user ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      {t("loginForNotifications")}
+                    </p>
+                  ) : !notificationsEnabled ? (
+                    <p className="p-4 text-sm text-muted-foreground">
+                      {t("notificationsDisabledHint")}
+                    </p>
+                  ) : notificationsLoading ? (
+                    <p className="p-4 text-sm text-muted-foreground">{t("loadingNotifications")}</p>
+                  ) : notificationItems.length === 0 ? (
+                    <p className="p-4 text-sm text-muted-foreground">{t("notificationsEmpty")}</p>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {notificationItems.slice(0, 10).map((n) => {
+                        const sev = String(n.severity).toUpperCase()
+                        const dot =
+                          sev === "CRITICAL"
+                            ? "bg-red-500"
+                            : sev === "HIGH"
+                              ? "bg-orange-500"
+                              : sev === "MEDIUM"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                        return (
+                          <li key={n.id} className="px-3 py-2.5 hover:bg-muted/50">
+                            <div className="flex gap-2">
+                              <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dot)} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold leading-tight line-clamp-2">{n.title}</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">
+                                  {n.targetZone}
+                                  {n.disease ? ` · ${n.disease}` : ""}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {new Date(n.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Toaster 
               position="top-right" 
               richColors 

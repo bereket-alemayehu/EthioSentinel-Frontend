@@ -7,6 +7,10 @@ export interface User {
   role: UserRole;
   region: string;
   assignedDistrict?: string;
+  phoneNumber?: string | null;
+  clearanceLevel?: number | null;
+  isActive?: boolean;
+  createdAt?: string;
 }
 
 export interface AuthContextType {

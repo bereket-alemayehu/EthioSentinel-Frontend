@@ -2,13 +2,18 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { AppShell } from '@/shared/components/layout/AppShell';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
+import { RoleHomeRedirect } from '@/app/routes/RoleHomeRedirect';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
+const SearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const CitizenPage = lazy(() => import('@/features/citizen/pages/CitizenPage'));
 const HEWPage = lazy(() => import('@/features/hew/pages/HEWPage'));
 const AdminPage = lazy(() => import('@/features/admin/pages/AdminPage'));
 const AdvisoryPage = lazy(() => import('@/features/advisory/pages/AdvisoryPage'));
+const ProfilePage = lazy(() => import('@/features/auth/pages/ProfilePage'));
+const SettingsPage = lazy(() => import('@/features/auth/pages/SettingsPage'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -27,12 +32,24 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: '/auth/register',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <RegisterPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/register',
+    element: <Navigate to="/auth/register" replace />,
+  },
+  {
     path: '/',
     element: <AppShell />,
     children: [
       {
         index: true,
-        element: <Navigate to="/citizen" replace />,
+        element: <RoleHomeRedirect />,
       },
       {
         path: 'citizen',
@@ -67,6 +84,30 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <AdvisoryPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'profile',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ProfilePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SettingsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'search',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SearchPage />
           </Suspense>
         ),
       },

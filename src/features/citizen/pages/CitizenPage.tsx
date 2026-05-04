@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { useRegions, useAdvisories } from "@/features/advisory/hooks/useAdvisory";
+import { AdvisoryArticles } from "@/features/advisory/components/AdvisoryArticles";
 import { SymptomChecker } from "@/features/advisory/components/SymptomChecker";
 import type { District } from "@/features/advisory/types";
 import type { RiskLevel } from "@/shared/types";
@@ -483,96 +484,7 @@ export default function CitizenPage() {
 
         {/* ── TAB: Advisories ───────────────────────────────────── */}
         {!loading && !error && activeTab === "advisories" && (
-          <div>
-            {filteredAdvisories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 rounded-3xl border border-border bg-card py-20 text-center">
-                <span className="text-5xl opacity-40">📭</span>
-                <p className="text-lg font-semibold text-foreground">
-                  {t("noApprovedAdvisories")}
-                </p>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  {t("noActiveAdvisoriesNow")}
-                </p>
-              </div>
-            ) : (
-            <div className="w-full divide-y divide-border/60">
-                {filteredAdvisories.map((item) => {
-                  const cfg = RISK_CONFIG[item.riskLevel];
-                  const date = item.createdAt ? new Date(item.createdAt).toLocaleDateString(undefined, {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  }) : t("recentAdvisory");
-                  
-                  return (
-                    <article
-                      key={item.id}
-                      className="py-12 first:pt-0 group transition-all"
-                    >
-                      {/* Meta Header */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
-                            🏥
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-foreground tracking-tight">
-                              {t("ministryOfHealth")} • {t("verifiedAdvisory")}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground uppercase font-black tracking-widest">
-                              {date}
-                            </span>
-                          </div>
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-xs ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                          {item.riskLevel} {t("risk")}
-                        </div>
-                      </div>
-
-                      {/* Post Title */}
-                      <div className="mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-[1.1] mb-2 tracking-tight group-hover:text-primary transition-colors">
-                          {item.title}
-                        </h2>
-                        <div className="flex items-center gap-2 text-xs font-bold text-teal-700 dark:text-emerald-400">
-                          <span className="flex items-center gap-1">📍 {item.district?.name || item.region?.name || t("national")}</span>
-                          <span>•</span>
-                          <span>🦠 {item.disease?.name || t("generalHealth")}</span>
-                        </div>
-                      </div>
-
-                      {/* Post Content */}
-                      <div className="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                        {item.content.split('\n').filter(p => p.trim()).map((para, i) => (
-                          <p key={i} className="mb-6 last:mb-0 first-letter:text-2xl first-letter:font-bold first-letter:text-primary first-letter:mr-1">
-                            {para}
-                          </p>
-                        ))}
-                      </div>
-
-                      {/* Post Interactions / Footer */}
-                      <div className="mt-10 flex items-center justify-between">
-                         <div className="flex items-center gap-4 text-muted-foreground">
-                            <button className="flex items-center gap-1.5 text-xs font-bold hover:text-primary transition-colors">
-                               <span>↗️</span> {t("share")}
-                            </button>
-                            <button className="flex items-center gap-1.5 text-xs font-bold hover:text-primary transition-colors">
-                               <span>⬇️</span> {t("downloadPdf")}
-                            </button>
-                         </div>
-                         <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("activeAdvisory")}</span>
-                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <AdvisoryArticles items={filteredAdvisories} />
         )}
 
         {/* ── TAB: Symptom Checker ──────────────────────────────── */}

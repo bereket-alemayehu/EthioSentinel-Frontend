@@ -37,7 +37,8 @@ export default function LoginPage() {
       const roleMap: Record<string, string> = {
         'ADMIN': '/admin',
         'HEW': '/hew',
-        'CITIZEN': '/citizen'
+        'CITIZEN': '/citizen',
+        'RESEARCHER': '/citizen',
       };
       navigate(roleMap[roleNormalized] || '/citizen', { replace: true });
     }

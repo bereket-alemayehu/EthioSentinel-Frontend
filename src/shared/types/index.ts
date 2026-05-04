@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'hew' | 'citizen';
+export type UserRole = 'admin' | 'hew' | 'citizen' | 'researcher';
 
 export interface ApiResponse<T> {
   data: T;

@@ -1,14 +1,31 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { loginApi, logoutApi, getMeApi, getStoredUser, setStoredUser } from "@/features/auth/api/auth";
+import {
+  loginApi,
+  logoutApi,
+  getMeApi,
+  getStoredUser,
+  setStoredUser,
+  setStoredRole,
+  syncGeolocationFromDeviceApi,
+} from "@/features/auth/api/auth";
 import type { User, AuthContextType } from "@/features/auth/types";
+import type { UserRole } from "@/shared/types";
 import { toast } from "sonner";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getStoredUser());
+  const [user, setUser] = useState<User | null>(getStoredUser);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = getStoredUser();
+    if (cached?.role && !window.localStorage.getItem("ethio-role")) {
+      setStoredRole(String(cached.role).toLowerCase() as UserRole);
+    }
+  }, []);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -27,6 +44,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     initAuth();
   }, []);
+
+  // One session attempt: refine assigned district from device GPS when permitted (requires HTTPS or localhost).
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") return;
+    if (!navigator.geolocation) return;
+
+    const key = `ethio-geo-synced-session:${user.id}`;
+    if (sessionStorage.getItem(key)) return;
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const updated = await syncGeolocationFromDeviceApi(
+            pos.coords.latitude,
+            pos.coords.longitude,
+          );
+          setUser(updated);
+          setStoredUser(updated);
+          sessionStorage.setItem(key, "1");
+        } catch (e) {
+          console.warn("Geolocation district sync skipped:", e);
+        }
+      },
+      () => {
+        sessionStorage.setItem(key, "1");
+      },
+      { enableHighAccuracy: false, timeout: 20_000, maximumAge: 300_000 },
+    );
+  }, [user?.id]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -81,12 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       await logoutApi();
-      setUser(null);
     } catch (err) {
       console.error("Logout failed:", err);
-      // Still clear local state
-      setUser(null);
     } finally {
+      setUser(null);
       setIsLoading(false);
     }
   };

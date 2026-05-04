@@ -1,12 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, X, Send, Bot, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/utils/cn';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 
@@ -19,75 +18,93 @@ interface Message {
 }
 
 export function Chatbot() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Initial message localized
-  const getGreeting = () => {
-    return i18n.language === 'am' 
+
+  const getGreeting = useCallback(() => {
+    return i18n.language === 'am'
       ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ። ዛሬ በጤና ክትትል ረገድ እንዴት ልረዳዎት እችላለሁ?`
       : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
-  };
+  }, [i18n.language]);
 
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: '1',
-      text: getGreeting(),
+      text:
+        i18n.language === 'am'
+          ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ።`
+          : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}.`,
       sender: 'bot',
       timestamp: new Date(),
     },
   ]);
+  const historyRequestGen = useRef(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Update greeting if language changes and no other messages exist
   useEffect(() => {
-    if (messages.length === 1 && messages[0].sender === 'bot') {
-      setMessages([{
-        ...messages[0],
-        text: getGreeting()
-      }]);
+    historyRequestGen.current += 1;
+    const gen = historyRequestGen.current;
+
+    const greetOnly = (): Message[] => [
+      {
+        id: `greet-${userId || 'guest'}-${gen}`,
+        text: getGreeting(),
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ];
+
+    if (!userId) {
+      setHistoryLoading(false);
+      setMessages(greetOnly());
+      return;
     }
-  }, [i18n.language]);
 
-  useEffect(() => {
+    setHistoryLoading(true);
+    setMessages([]);
+
     const loadHistory = async () => {
-      if (!user) {
-        setMessages([{
-          id: 'guest-greeting',
-          text: getGreeting(),
-          sender: 'bot',
-          timestamp: new Date(),
-        }]);
-        return;
-      }
-
       try {
         const history = await getChatHistoryApi();
-        if (history.length === 0) {
-          setMessages([{
-            id: 'welcome',
-            text: getGreeting(),
-            sender: 'bot',
-            timestamp: new Date(),
-          }]);
-          return;
-        }
+        if (gen !== historyRequestGen.current) return;
 
-        setMessages(history.map((item) => ({
-          id: item.id,
-          text: item.text,
-          sender: item.role === 'USER' ? 'user' : 'bot',
-          timestamp: new Date(item.createdAt),
-        })));
+        if (history.length === 0) {
+          setMessages(greetOnly());
+        } else {
+          setMessages(
+            history.map((item) => ({
+              id: item.id,
+              text: item.text,
+              sender: item.role === 'USER' ? 'user' : 'bot',
+              timestamp: new Date(item.createdAt),
+            })),
+          );
+        }
       } catch (error) {
         console.error('Failed to load chat history', error);
+        if (gen !== historyRequestGen.current) return;
+        setMessages(greetOnly());
+      } finally {
+        if (gen === historyRequestGen.current) {
+          setHistoryLoading(false);
+        }
       }
     };
 
-    if (isOpen) {
-      loadHistory();
-    }
-  }, [isOpen, user]);
+    void loadHistory();
+  }, [userId, getGreeting]);
+
+  useEffect(() => {
+    if (historyLoading) return;
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].sender === 'bot') {
+        return [{ ...prev[0], id: prev[0].id, text: getGreeting() }];
+      }
+      return prev;
+    });
+  }, [i18n.language, getGreeting, historyLoading]);
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -192,6 +209,7 @@ export function Chatbot() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            key={userId || 'guest'}
             initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -234,7 +252,14 @@ export function Chatbot() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10 custom-scrollbar">
-              {messages.map((m) => (
+              {historyLoading && (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+                  <p>{t('chatLoadingHistory')}</p>
+                </div>
+              )}
+              {!historyLoading &&
+                messages.map((m) => (
                 <div
                   key={m.id}
                   className={cn(
@@ -279,7 +304,7 @@ export function Chatbot() {
                   </div>
                 </div>
               ))}
-              {isLoading && (
+              {!historyLoading && isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-background rounded-2xl rounded-tl-none px-4 py-3 border border-border/50 shadow-sm flex items-center gap-2 ring-1 ring-black/5">
                     <div className="flex gap-1.5">
@@ -302,7 +327,7 @@ export function Chatbot() {
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              {!historyLoading && <div ref={messagesEndRef} />}
             </div>
 
             {/* Input */}
@@ -314,12 +339,13 @@ export function Chatbot() {
                 placeholder="Type your message..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                disabled={historyLoading}
                 className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl"
               />
               <Button 
                 type="submit" 
                 size="icon" 
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || historyLoading}
                 className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
               >
                 <Send className="w-4 h-4 ml-0.5" />
