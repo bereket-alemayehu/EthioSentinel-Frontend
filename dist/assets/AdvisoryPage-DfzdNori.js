@@ -1,0 +1,1 @@
+import{j as t,Y as s}from"./index-B1Tpp4CE.js";const o=()=>t.jsxs("div",{className:"container mx-auto p-4 flex flex-col items-center",children:[t.jsx("h1",{className:"text-2xl font-bold mb-4",children:"Advisory & Chatbot"}),t.jsx(s,{})]});export{o as default};
