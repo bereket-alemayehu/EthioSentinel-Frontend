@@ -38,6 +38,17 @@ export const sendChatMessageApi = async (
   return response.data.data;
 };
 
+export const sendPublicChatMessageApi = async (
+  message: string,
+  language: 'ENGLISH' | 'AMHARIC'
+): Promise<ChatMessage> => {
+  const response = await api.post<{ data: ChatMessage }>('/advisories/chat/public/message', {
+    message,
+    language,
+  });
+  return response.data.data;
+};
+
 export const clearChatHistoryApi = async (): Promise<void> => {
   await api.delete('/advisories/chat/history');
 };

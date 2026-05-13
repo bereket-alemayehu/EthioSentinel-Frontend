@@ -140,6 +140,9 @@ export interface AdHocAnomalyResult {
   district: string;
   diseaseType: string;
   currentCases: number;
+  currentDeaths: number;
+  mortalityRate: number;
+  mortalitySignal: boolean;
   historicalMean: number;
   stdDev: number;
   zScore?: number;
@@ -160,6 +163,34 @@ export const runAnomaly = async (payload: {
 }): Promise<AdHocAnomalyResult> => {
   const response = await api.post<{ data: AdHocAnomalyResult }>(
     '/analytics/anomalies/run',
+    payload
+  );
+  return response.data.data;
+};
+
+export interface AdHocPredictionResult {
+  district: string;
+  diseaseType: string;
+  currentCases: number;
+  forecastNext: number;
+  residualStd: number;
+  zScore?: number;
+  classification: AnomalyClassification;
+  sampleSize: number;
+  lookbackStart: string;
+  lookbackEnd: string;
+  thresholdSigma: number;
+  arimaOrder: [number, number, number];
+}
+
+export const runPrediction = async (payload: {
+  district: string;
+  diseaseType: string;
+  lookbackDays?: number;
+  thresholdSigma?: number;
+}): Promise<AdHocPredictionResult> => {
+  const response = await api.post<{ data: AdHocPredictionResult }>(
+    '/analytics/predictions/run',
     payload
   );
   return response.data.data;

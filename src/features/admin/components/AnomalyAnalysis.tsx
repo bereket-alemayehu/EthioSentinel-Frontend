@@ -21,6 +21,7 @@ import {
   useAnomalies,
   useAnomalyTimeseries,
   useRunAnomalyMutation,
+  useRunPredictionMutation,
 } from "../hooks/useAdmin";
 import { useRegions } from "@/features/advisory/hooks/useAdvisory";
 import { getDiseases } from "@/features/reporting/api/index";
@@ -97,6 +98,7 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
   const { data: ts, isLoading: tsLoading } = useAnomalyTimeseries(timeseriesParams);
 
   const runMutation = useRunAnomalyMutation();
+  const predictionMutation = useRunPredictionMutation();
 
   useEffect(() => {
     if (regions.length > 0 && !selectedRegionId) {
@@ -180,7 +182,43 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
     );
   };
 
+  const handlePredictionRun = () => {
+    if (!selectedDistrictName || !selectedDiseaseName) return;
+    predictionMutation.mutate(
+      {
+        district: selectedDistrictName,
+        diseaseType: selectedDiseaseName,
+        lookbackDays,
+      },
+      {
+        onSuccess: (res) => {
+          toast.success(
+            `${t("forecastNext")}: ${res.forecastNext.toFixed(2)} · ${res.classification}`,
+          );
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || String(err));
+        },
+      },
+    );
+  };
+
   const runResult = runMutation.data;
+  const predictionResult = predictionMutation.data;
+  const spikeDifference = runResult
+    ? Math.max(0, Math.round(runResult.currentCases - runResult.historicalMean))
+    : 0;
+  const predictionDifference = predictionResult
+    ? Math.round(predictionResult.currentCases - predictionResult.forecastNext)
+    : 0;
+  const spikeHeadline =
+    runResult?.classification === "ANOMALY"
+      ? t("unusualSpikeDetected")
+      : t("caseLevelLooksNormal");
+  const predictionHeadline =
+    predictionResult?.classification === "ANOMALY"
+      ? t("casesAboveForecast")
+      : t("casesNearForecast");
 
   return (
     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -252,7 +290,7 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
               className="w-full accent-teal-600"
             />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 lg:col-span-1">
             <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
               <input
                 type="checkbox"
@@ -265,29 +303,130 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
               type="button"
               onClick={handleRun}
               disabled={runMutation.isPending || !selectedDistrictName || !selectedDiseaseName}
-              className="primary-gradient text-white rounded-xl font-bold"
+              className="primary-gradient text-white rounded-xl font-bold shadow-lg shadow-teal-900/10"
             >
               {runMutation.isPending ? t("scanningDatabases") : t("runAnalysis")}
             </Button>
           </div>
+          <div className="flex flex-col gap-2 lg:col-span-6 xl:col-span-1">
+            <Button
+              type="button"
+              onClick={handlePredictionRun}
+              disabled={predictionMutation.isPending || !selectedDistrictName || !selectedDiseaseName}
+              className="primary-gradient text-white rounded-xl font-bold shadow-lg shadow-teal-900/10"
+            >
+              {predictionMutation.isPending ? t("scanningDatabases") : t("runPrediction")}
+            </Button>
+            <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+              {t("predictionHint")}
+            </p>
+          </div>
         </CardContent>
-        {runResult && (
-          <div className="px-6 pb-6">
-            <div className="rounded-2xl border border-teal-200 dark:border-teal-900 bg-teal-50/50 dark:bg-teal-950/30 p-4 flex flex-wrap gap-4 items-center">
-              <Badge variant="secondary" className="text-xs font-black">
-                {t("classification")}: {runResult.classification}
-              </Badge>
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                {t("zScoreShort")}: {runResult.zScore ?? "—"}
-              </span>
-              <span className="text-xs text-slate-500">
-                n={runResult.sampleSize} · μ={runResult.historicalMean.toFixed(2)} · σ=
-                {runResult.stdDev.toFixed(2)}
-              </span>
-              {runResult.signalId && (
-                <span className="text-xs text-teal-700 dark:text-teal-400">
-                  ID: {runResult.signalId.slice(0, 8)}…
-                </span>
+        {(runResult || predictionResult) && (
+          <div className="px-6 pb-6 space-y-3">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-400">
+              {t("analysisSummary")}
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {runResult && (
+                <div
+                  className={cn(
+                    "rounded-3xl border p-5 shadow-sm",
+                    runResult.classification === "ANOMALY"
+                      ? "border-red-200 bg-red-50/80 dark:border-red-900 dark:bg-red-950/25"
+                      : "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/25",
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black text-slate-900 dark:text-slate-100">
+                        {spikeHeadline}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                        {runResult.mortalitySignal
+                          ? `${t("mortalitySpikePlainMessage")} ${runResult.currentDeaths} ${t("deaths").toLowerCase()}; ${t("mortalityRate")} ${(runResult.mortalityRate * 100).toFixed(1)}%.`
+                          : runResult.classification === "ANOMALY"
+                          ? `${t("spikePlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}. ${t("about")} ${spikeDifference} ${t("casesHigherThanUsual")}.`
+                          : `${t("normalPlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}.`}
+                      </p>
+                    </div>
+                    <Badge variant={runResult.classification === "ANOMALY" ? "destructive" : "secondary"} className="text-xs font-black">
+                      {runResult.classification === "ANOMALY" ? t("needsReview") : t("normal")}
+                    </Badge>
+                  </div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("currentCases")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.currentCases}</p>
+                    </div>
+                    <div className={cn(
+                      "rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm",
+                      runResult.mortalitySignal && "ring-2 ring-red-300 dark:ring-red-800",
+                    )}>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("deaths")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.currentDeaths}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("usualRecentLevel")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.historicalMean.toFixed(1)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("dataPoints")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.sampleSize}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    {t("technicalDetails")}: {t("zScoreShort")} {runResult.zScore ?? "—"}, σ={runResult.stdDev.toFixed(2)}
+                  </p>
+                  {runResult.signalId && (
+                    <p className="mt-2 text-xs text-teal-700 dark:text-teal-400">
+                      ID: {runResult.signalId.slice(0, 8)}…
+                    </p>
+                  )}
+                </div>
+              )}
+              {predictionResult && (
+                <div
+                  className={cn(
+                    "rounded-3xl border p-5 shadow-sm",
+                    predictionResult.classification === "ANOMALY"
+                      ? "border-orange-200 bg-orange-50/80 dark:border-orange-900 dark:bg-orange-950/25"
+                      : "border-sky-200 bg-sky-50/80 dark:border-sky-900 dark:bg-sky-950/25",
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-lg font-black text-slate-900 dark:text-slate-100">
+                        {predictionHeadline}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                        {predictionResult.classification === "ANOMALY"
+                          ? `${t("predictionPlainMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}, ${t("butCurrentReportsShow")} ${predictionResult.currentCases}. ${t("about")} ${Math.max(0, predictionDifference)} ${t("casesAboveExpected")}.`
+                          : `${t("predictionNormalMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}; ${t("currentReportsShow")} ${predictionResult.currentCases}.`}
+                      </p>
+                    </div>
+                    <Badge variant={predictionResult.classification === "ANOMALY" ? "destructive" : "secondary"} className="text-xs font-black">
+                      {predictionResult.classification === "ANOMALY" ? t("watchClosely") : t("withinExpectedRange")}
+                    </Badge>
+                  </div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("currentCases")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.currentCases}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("usualOrExpectedLevel")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.forecastNext.toFixed(1)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("dataPoints")}</p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.sampleSize}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[11px] text-slate-400">
+                    {t("technicalDetails")}: {t("zScoreShort")} {predictionResult.zScore ?? "—"}, σ={predictionResult.residualStd.toFixed(2)}
+                  </p>
+                </div>
               )}
             </div>
           </div>

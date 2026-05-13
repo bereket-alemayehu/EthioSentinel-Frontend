@@ -54,13 +54,37 @@ function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePa
       })
     : t("recentAdvisory");
   return {
-    title: item.title,
-    content: item.content,
+    title: publicAdvisoryTitle(item.title),
+    content: publicAdvisoryParagraphs(item.content).join("\n\n"),
     locationLabel: item.district?.name ?? item.region?.name ?? t("national"),
     diseaseLabel: item.disease?.name ?? t("generalHealth"),
     riskLevel: item.riskLevel,
     issuedAt: issued,
   };
+}
+
+function publicAdvisoryTitle(title: string) {
+  return title
+    .replace(/^AI\s*Draft:\s*/i, "")
+    .replace(/\s*spike detected\s*/i, " health update ")
+    .trim();
+}
+
+function publicAdvisoryParagraphs(content: string) {
+  return content
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^AI anomaly signal detected for/i, "Health monitoring detected a change for")
+        .replace(/This draft was generated automatically.*$/i, "")
+        .trim(),
+    )
+    .filter((line) => {
+      if (!line) return false;
+      if (/requires\s+ADMIN\s+review/i.test(line)) return false;
+      if (/draft\s+advisory/i.test(line)) return false;
+      return true;
+    });
 }
 
 interface AdvisoryArticlesProps {
@@ -153,7 +177,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
 
             <div className="mb-6">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-[1.1] mb-2 tracking-tight group-hover:text-primary transition-colors">
-                {item.title}
+                {publicAdvisoryTitle(item.title)}
               </h2>
               <div className="flex flex-wrap gap-2 items-center text-xs font-bold text-teal-700 dark:text-emerald-400">
                 <span className="flex items-center gap-1">
@@ -165,9 +189,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
             </div>
 
             <div className="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-              {item.content
-                .split("\n")
-                .filter((p) => p.trim())
+              {publicAdvisoryParagraphs(item.content)
                 .map((para, i) => (
                   <p
                     key={i}

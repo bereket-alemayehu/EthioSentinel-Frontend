@@ -23,6 +23,8 @@ export const EditReportModal: React.FC<EditReportModalProps> = ({
   handleEditSave,
   t
 }) => {
+  const today = new Date().toLocaleDateString("en-CA");
+
   return (
     <Modal
       isOpen={isOpen}
@@ -55,6 +57,7 @@ export const EditReportModal: React.FC<EditReportModalProps> = ({
             <Input
               type="date"
               value={editForm.date}
+              max={today}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, date: e.target.value })}
               required
               className="h-12 bg-light-700/40 dark:bg-white/5 border-white/10 rounded-xl font-black"

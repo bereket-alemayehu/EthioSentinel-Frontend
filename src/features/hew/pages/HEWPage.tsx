@@ -49,6 +49,7 @@ export default function HEWPage() {
   const deleteServerMutation = useDeleteReportMutation();
   const { data: diseaseList = [] } = useDiseases();
   const reportsContainerRef = useRef<HTMLDivElement>(null);
+  const todayDate = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
 
   const diseaseOptions = useMemo(() => 
     diseaseList.map((d: any) => ({
@@ -199,6 +200,11 @@ export default function HEWPage() {
       return;
     }
 
+    if (form.date && form.date > todayDate) {
+      toast.error("Observation date cannot be in the future");
+      return;
+    }
+
     const payload = { ...form };
     if (!navigator.onLine) {
       await queueHewReport(payload);
@@ -244,6 +250,11 @@ export default function HEWPage() {
 
     if (editForm.deaths > editForm.cases) {
       toast.error(t("mortalityError") || "deathCount cannot exceed caseCount");
+      return;
+    }
+
+    if (editForm.date && editForm.date > todayDate) {
+      toast.error("Observation date cannot be in the future");
       return;
     }
 
