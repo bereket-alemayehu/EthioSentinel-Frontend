@@ -21,6 +21,7 @@ export function RoleHomeRedirect() {
 
   const role = String(user.role).toLowerCase();
   if (role === 'admin') return <Navigate to="/admin" replace />;
+  if (role === 'super_admin') return <Navigate to="/admin" replace />;
   if (role === 'hew') return <Navigate to="/hew" replace />;
   return <Navigate to="/citizen" replace />;
 }

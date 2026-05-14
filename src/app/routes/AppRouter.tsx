@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AppShell } from '@/shared/components/layout/AppShell';
 import { RoleGate } from '@/shared/components/auth/RoleGate';
 import { RoleHomeRedirect } from '@/app/routes/RoleHomeRedirect';
+import { DashboardRedirect } from '@/app/routes/DashboardRedirect';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -12,6 +13,7 @@ const SearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const CitizenPage = lazy(() => import('@/features/citizen/pages/CitizenPage'));
 const HEWPage = lazy(() => import('@/features/hew/pages/HEWPage'));
 const AdminPage = lazy(() => import('@/features/admin/pages/AdminPage'));
+const SuperAdminPage = lazy(() => import('@/features/super-admin/pages/SuperAdminPage'));
 const AdvisoryPage = lazy(() => import('@/features/advisory/pages/AdvisoryPage'));
 const ProfilePage = lazy(() => import('@/features/auth/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/features/auth/pages/SettingsPage'));
@@ -61,6 +63,10 @@ const router = createBrowserRouter([
         element: <RoleHomeRedirect />,
       },
       {
+        path: 'dashboard',
+        element: <DashboardRedirect />,
+      },
+      {
         path: 'citizen',
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -71,7 +77,7 @@ const router = createBrowserRouter([
       {
         path: 'hew',
         element: (
-          <RoleGate allowedRoles={['hew', 'admin']}>
+          <RoleGate allowedRoles={['hew', 'admin', 'super_admin']}>
             <Suspense fallback={<PageLoader />}>
               <HEWPage />
             </Suspense>
@@ -81,9 +87,19 @@ const router = createBrowserRouter([
       {
         path: 'admin',
         element: (
-          <RoleGate allowedRoles={['admin']}>
+          <RoleGate allowedRoles={['admin', 'super_admin']}>
             <Suspense fallback={<PageLoader />}>
               <AdminPage />
+            </Suspense>
+          </RoleGate>
+        ),
+      },
+      {
+        path: 'super-admin',
+        element: (
+          <RoleGate allowedRoles={['super_admin']}>
+            <Suspense fallback={<PageLoader />}>
+              <SuperAdminPage />
             </Suspense>
           </RoleGate>
         ),

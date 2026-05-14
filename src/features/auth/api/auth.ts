@@ -68,6 +68,13 @@ export async function loginApi(email: string, password: string, recaptchaToken: 
   return user;
 }
 
+export async function changePasswordApi(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  await api.patch("/auth/me/password", { currentPassword, newPassword });
+}
+
 export async function logoutApi(): Promise<void> {
   await api.post("/auth/logout");
   clearStoredRole();

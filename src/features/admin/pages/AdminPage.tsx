@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAlerts, useUpdateAlertStatusMutation, useGeoStats } from "@/features/admin/hooks/useAdmin";
 import { useAdvisoryDrafts, useApprovedAdvisories, useUpdateAdvisoryStatusMutation } from "@/features/admin/hooks/useAdvisoryActions";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Shield } from "lucide-react";
+import { useAuth } from "@/app/providers/auth/AuthProvider";
+import { Button } from "@/shared/components/ui/button";
 
 import { AdminHeader, type AdminTab } from "@/features/admin/components/AdminHeader";
 import { AlertApprovals } from "@/features/admin/components/AlertApprovals";
@@ -11,9 +14,38 @@ import { MapIntelligence } from "@/features/admin/components/MapIntelligence";
 import { AnomalyAnalysis } from "@/features/admin/components/AnomalyAnalysis";
 import { aggregateByDistrict } from "@/features/admin/utils";
 
+const ADMIN_TABS: AdminTab[] = ["alerts", "advisories", "map", "anomaly"];
+
+function tabFromQuery(value: string | null): AdminTab {
+  if (value && ADMIN_TABS.includes(value as AdminTab)) {
+    return value as AdminTab;
+  }
+  return "alerts";
+}
+
 export default function AdminPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<AdminTab>("alerts");
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<AdminTab>(() =>
+    tabFromQuery(searchParams.get("tab")),
+  );
+
+  useEffect(() => {
+    setActiveTab(tabFromQuery(searchParams.get("tab")));
+  }, [searchParams]);
+
+  const setTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const {
     data: alerts = [],
     isLoading: loading,
@@ -66,8 +98,24 @@ export default function AdminPage() {
 
   return (
     <div className="p-6 md:p-10 space-y-8 min-h-screen bg-slate-50/60 dark:bg-slate-950/60 font-sans transition-colors duration-500">
+      {user?.role === "super_admin" ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2 border-teal-600/40 font-semibold"
+            asChild
+          >
+            <Link to="/super-admin">
+              <Shield className="h-4 w-4" />
+              Governance dashboard
+            </Link>
+          </Button>
+        </div>
+      ) : null}
       {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <AdminHeader activeTab={activeTab} setActiveTab={setActiveTab} t={t} />
+      <AdminHeader activeTab={activeTab} setActiveTab={setTab} t={t} />
 
       {/* ── Error banner ────────────────────────────────────────────────── */}
       {error && (

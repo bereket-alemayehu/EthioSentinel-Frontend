@@ -41,6 +41,7 @@ export default function LoginPage() {
       const roleNormalized = user.role.toUpperCase();
       const roleMap: Record<string, string> = {
         'ADMIN': '/admin',
+        'SUPER_ADMIN': '/admin',
         'HEW': '/hew',
         'CITIZEN': '/citizen',
         'RESEARCHER': '/citizen',

@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'hew' | 'citizen' | 'researcher';
+export type UserRole = 'admin' | 'hew' | 'citizen' | 'researcher' | 'super_admin';
 
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 
