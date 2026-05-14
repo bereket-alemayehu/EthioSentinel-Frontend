@@ -474,30 +474,23 @@ export function AnomalyAnalysis({
                       </p>
                       <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
                         {predictionResult.classification === "ANOMALY"
-                          ? `${t("predictionPlainMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}, ${t("butCurrentReportsShow")} ${predictionResult.currentCases}. ${t("about")} ${Math.max(0, predictionDifference)} ${t("casesAboveExpected")}.`
-                          : `${t("predictionNormalMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}; ${t("currentReportsShow")} ${predictionResult.currentCases}.`}
+                          ? t("predictionSummaryAnomaly", {
+                              forecast: predictionResult.forecastNext.toFixed(0),
+                              current: predictionResult.currentCases,
+                              diff: Math.max(0, predictionDifference),
+                              days: lookbackDays,
+                            })
+                          : t("predictionSummaryNormal", {
+                              forecast: predictionResult.forecastNext.toFixed(0),
+                              current: predictionResult.currentCases,
+                              days: lookbackDays,
+                            })}
                       </p>
-                      <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        {t("predictionTargetPeriodTitle")}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                        {t("predictionTimeframeCaption", { days: lookbackDays })}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                        {t("predictionHorizonScope")}
-                      </p>
-                      <p
-                        className={cn(
-                          "mt-2 text-xs",
-                          predictionResult.classification === "ANOMALY"
-                            ? "font-semibold text-orange-900 dark:text-orange-100"
-                            : "text-slate-600 dark:text-slate-400",
-                        )}
-                      >
-                        {predictionResult.classification === "ANOMALY"
-                          ? t("predictionInactionAnomaly")
-                          : t("predictionInactionNormal")}
-                      </p>
+                      {predictionResult.classification === "ANOMALY" ? (
+                        <p className="mt-2 text-xs font-semibold text-orange-900 dark:text-orange-100">
+                          {t("predictionInactionAnomalyShort")}
+                        </p>
+                      ) : null}
                     </div>
                     <Badge
                       variant={

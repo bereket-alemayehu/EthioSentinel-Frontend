@@ -205,17 +205,14 @@ const resources = {
       runAnalysis: "Check for unusual spike",
       runPrediction: "Predict next cases",
       predictionHint:
-        "Forecasts one step ahead from your lookback window: the value answers “what level comes next in this series?”—for weekly-style reporting, read that as about the upcoming week, not a month- or year-ahead projection.",
-      predictionTimeframeCaption:
-        "Input window: last {{days}} days of reports for this district and disease. The highlighted forecast is a single one-step-ahead estimate from that history (ARIMA-style), not separate month or year horizons.",
-      predictionTargetPeriodTitle: "Forecast time frame",
-      predictionTargetPeriodShort: "≈ next reporting step (~1 week if reports are weekly)",
-      predictionHorizonScope:
-        "This tool does not output independent month-ahead or year-ahead curves. For a longer view of context, increase the lookback slider (up to 90 days) and run again; the forecast still advances one step from the end of the window.",
-      predictionInactionAnomaly:
-        "If no public-health response within about a week, case counts here may stay above trend or worsen over the following month—prioritize field verification, reporting quality checks, and standard outbreak measures.",
-      predictionInactionNormal:
-        "Keep routine surveillance; re-run after new reports or if the situation changes.",
+        "Forecast is one step ahead from your lookback window (interpret as ~next week if you report weekly).",
+      predictionSummaryNormal:
+        "Next step (~1 week if weekly): forecast ~{{forecast}} cases · latest reports {{current}} · last {{days}} days.",
+      predictionSummaryAnomaly:
+        "Next step (~1 week if weekly): forecast ~{{forecast}} cases · latest {{current}} (~{{diff}} above) · last {{days}} days.",
+      predictionInactionAnomalyShort:
+        "If elevated counts continue, escalate verification and response per local outbreak protocol.",
+      predictionTargetPeriodShort: "≈ next reporting step (~1 week if weekly)",
       prediction: "Prediction",
       forecastNext: "Forecast next",
       currentCases: "Current cases",
@@ -562,17 +559,14 @@ const resources = {
       runAnalysis: "ያልተለመደ ጭማሪ ፈትሽ",
       runPrediction: "ቀጣይ ኬዞችን ተንብይ",
       predictionHint:
-        "ከውጣ መስመርዎ አንድ ደረጅ ወደፊት ይተንበያል፦ «ቀጣይ» ማለት በተለመደ ሳምንታዊ ሪፖርት ምን እንደሚጠበብ ይታሰባል፤ የተለዩ የወር ወይም የዓመት ትንበያዎች አይደሉም።",
-      predictionTimeframeCaption:
-        "ግብአት፦ ለዚህ ወረዳ እና በሽታ የመጨረሻው {{days}} ቀናት። የሚታየው ትንበያ ከታሪኩ አንድ-ደረጅ ወደፊት ግምት (ARIMA አይነት) ነው፤ የተለዩ ወር/ዓመት መስመሮች አይወጡም።",
-      predictionTargetPeriodTitle: "የትንበያ ጊዜ ክፍል",
-      predictionTargetPeriodShort: "≈ ቀጣዩ የሪፖርት ደረጃ (ሳምንታዊ ከሆነ ~1 ሳምንት)",
-      predictionHorizonScope:
-        "የተለዩ «ወር ወይም ዓመት ወደፊት» ግራፎች እዚህ አይመነገሩም። የታሪክ አውድ ለማሰፋት የውጣ ስላይደርን እስከ 90 ቀን ያሳድጉ እና እንደገና ይሂዱ፤ ትንበያው ከመስኮቱ መጨረሻ አንድ ደረጅ ብቻ ይራቃል።",
-      predictionInactionAnomaly:
-        "የህብረተሰብ ጤና ምላሽ በግምት አንድ ሳምንት ውስጥ ካልተሰጠ፣ ኬዞች ከአዝማሚያው በላይ ሊቆዩ ወይም በሚቀጥለው ወር ሊባዙ ይችላል—የመስክ ማረጋገጫ፣ የሪፖርት ጥራት፣ እና መደበኛ የመበስተር እርምጃዎችን ያስቀድሙ።",
-      predictionInactionNormal:
-        "መደበኛ ክትትል ይቀጥሉ፤ አዲስ ሪፖርቶች ካሉ ወይም ሁኔታው ከተለወጠ በኋላ እንደገና ይሂዱ።",
+        "ትንበያው ከውጣ መስመር አንድ ደረጅ ወደፊት ነው (ሳምንታዊ ሪፖርት ከሆነ ~ቀጣዩ ሳምንት)።",
+      predictionSummaryNormal:
+        "ቀጣይ ደረጃ (~1 ሳምንት)፦ ትንበያ ~{{forecast}} ኬዞች · የአሁኑ ሪፖርት {{current}} · የመጨረሻ {{days}} ቀናት።",
+      predictionSummaryAnomaly:
+        "ቀጣይ ደረጃ (~1 ሳምንት)፦ ትንበያ ~{{forecast}} ኬዞች · የአሁን {{current}} (~{{diff}} በላይ) · የመጨረሻ {{days}} ቀናት።",
+      predictionInactionAnomalyShort:
+        "ከፍተኛው ከቀጠለ ማረጋገጫና ምላሽ በአካባቢ መመሪያ ያስፋፉ።",
+      predictionTargetPeriodShort: "≈ ቀጣዩ የሪፖርት ደረጃ (~1 ሳምንት)",
       prediction: "ትንበያ",
       forecastNext: "ቀጣይ ትንበያ",
       currentCases: "የአሁኑ ኬዞች",
