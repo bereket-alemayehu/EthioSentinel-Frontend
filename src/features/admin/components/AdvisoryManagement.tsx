@@ -4,6 +4,7 @@ import { FileText, Clock, CheckCircle, ShieldCheck, CheckCircle2, Trash2, Undo2 
 import { cn } from "@/shared/utils/cn";
 import { getSeverityLevel } from "@/features/admin/utils";
 import { useTranslation } from "react-i18next";
+import { formatDate } from "@/shared/utils/formatDate";
 
 interface AdvisoryManagementProps {
   drafts: any[];
@@ -90,6 +91,7 @@ export function AdvisoryManagement({
                 <tr className="text-left">
                   <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("riskLevelColumn")}</th>
                   <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("diseaseLocationColumn")}</th>
+                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("dateColumn")}</th>
                   <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("advisoryContentColumn")}</th>
                   <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">{t("actionsColumn")}</th>
                 </tr>
@@ -97,7 +99,7 @@ export function AdvisoryManagement({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {isListLoading ? (
                   <tr>
-                    <td colSpan={4} className="py-32 text-center">
+                    <td colSpan={5} className="py-32 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="h-10 w-10 border-3 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
                         <span className="text-sm font-bold text-slate-400 tracking-wide">{t("syncingLabel")}</span>
@@ -106,7 +108,7 @@ export function AdvisoryManagement({
                   </tr>
                 ) : currentList.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-32 text-center px-8">
+                    <td colSpan={5} className="py-32 text-center px-8">
                       <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
                         <div className="w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
                           <ShieldCheck className="w-10 h-10 text-slate-300 dark:text-slate-600" />
@@ -123,6 +125,14 @@ export function AdvisoryManagement({
                     const sev = getSeverityLevel(advisory.riskLevel);
                     const isPending = isActionPending(advisory.id);
                     const action = pendingAction(advisory.id);
+                    const rawDate =
+                      subTab === "pending"
+                        ? advisory.createdAt
+                        : advisory.approvedAt ?? advisory.updatedAt ?? advisory.createdAt;
+                    const dateLabel =
+                      rawDate && !Number.isNaN(new Date(rawDate).getTime())
+                        ? formatDate(rawDate)
+                        : "—";
 
                     return (
                       <tr key={advisory.id} className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-all cursor-default">
@@ -139,6 +149,11 @@ export function AdvisoryManagement({
                               {advisory.district?.name || advisory.region?.name || t("nationalShort")}
                             </span>
                           </div>
+                        </td>
+                        <td className="px-8 py-6 whitespace-nowrap">
+                          <span className="text-sm font-medium text-slate-600 dark:text-slate-300 tabular-nums">
+                            {dateLabel}
+                          </span>
                         </td>
                         <td className="px-8 py-6 max-w-md">
                           <div className="space-y-1">

@@ -4,4 +4,5 @@ export type AlertItem = {
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   advisory: string;
   status: "Draft" | "Approved";
+  createdAt?: string;
 };
