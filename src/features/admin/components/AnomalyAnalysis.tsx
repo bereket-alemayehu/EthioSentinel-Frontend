@@ -477,8 +477,14 @@ export function AnomalyAnalysis({
                           ? `${t("predictionPlainMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}, ${t("butCurrentReportsShow")} ${predictionResult.currentCases}. ${t("about")} ${Math.max(0, predictionDifference)} ${t("casesAboveExpected")}.`
                           : `${t("predictionNormalMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}; ${t("currentReportsShow")} ${predictionResult.currentCases}.`}
                       </p>
-                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                      <p className="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        {t("predictionTargetPeriodTitle")}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                         {t("predictionTimeframeCaption", { days: lookbackDays })}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                        {t("predictionHorizonScope")}
                       </p>
                       <p
                         className={cn(
@@ -517,10 +523,13 @@ export function AnomalyAnalysis({
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        {t("usualOrExpectedLevel")}
+                        {t("forecastNext")}
                       </p>
                       <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
                         {predictionResult.forecastNext.toFixed(1)}
+                      </p>
+                      <p className="mt-1.5 text-[10px] leading-snug font-semibold text-slate-500 dark:text-slate-400">
+                        {t("predictionTargetPeriodShort")}
                       </p>
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
