@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User,
-  Mail, 
   Lock, 
   ArrowRight, 
   Eye, 
@@ -18,48 +17,77 @@ import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 
 export default function LoginPage() {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, error } = useAuth();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false
   });
   
+  const isOnline = useOnlineStatus();
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(
+    !navigator.onLine ? 'OFFLINE' : null
+  );
+
+  // Sync token when connectivity changes
+  useEffect(() => {
+    if (!isOnline) {
+      recaptchaRef.current?.reset();
+      setRecaptchaToken('OFFLINE');
+    } else {
+      // Coming back online: require the user to solve CAPTCHA again
+      setRecaptchaToken(null);
+    }
+  }, [isOnline]);
 
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { login, isLoading, error, user } = useAuth();
 
   // Role-based redirection logic
   React.useEffect(() => {
-    if (user) {
-      const roleNormalized = user.role.toUpperCase();
+    if (user && !isLoading) {
+      console.log(`[LoginPage] User detected: ${user.username}, Role: ${user.role}. Attempting redirect...`);
+      const roleNormalized = String(user.role).toUpperCase();
       const roleMap: Record<string, string> = {
         'ADMIN': '/admin',
         'HEW': '/hew',
         'CITIZEN': '/citizen',
         'RESEARCHER': '/citizen',
       };
-      navigate(roleMap[roleNormalized] || '/citizen', { replace: true });
+      const target = roleMap[roleNormalized] || '/citizen';
+      console.log(`[LoginPage] Target route: ${target}`);
+      navigate(target, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
+
+  if (user && !isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f6b7c]">
+        <div className="text-center text-white">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-lg font-bold tracking-tight uppercase">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[LoginPage] Form submitted. isOnline:", isOnline, "Token:", !!recaptchaToken);
     if (!recaptchaToken) {
       toast.error('Please verify that you are human');
       return;
     }
     try {
       await login(formData.email, formData.password, recaptchaToken);
-      toast.success(t('signIn'));
     } catch (err: any) {
-      toast.error(err.message || t('logoutFailed'));
+      console.error("[LoginPage] Login error:", err);
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
     }
@@ -176,15 +204,20 @@ export default function LoginPage() {
               </label>
             </div>
 
-            <div className="flex justify-center mt-2">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                onChange={(token) => setRecaptchaToken(token)}
-                theme="light"
-              />
-            </div>
+            {isOnline && (
+              <div className="flex justify-center mt-2">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                  onChange={(token) => setRecaptchaToken(token)}
+                  onExpired={() => setRecaptchaToken(null)}
+                  onErrored={() => setRecaptchaToken('OFFLINE')} // Google unreachable → bypass
+                  theme="light"
+                />
+              </div>
+            )}
 
+            {/* disabled is false in offline mode because recaptchaToken === 'OFFLINE' (always truthy) */}
             <Button 
               type="submit" 
               disabled={isLoading || !recaptchaToken}

@@ -14,40 +14,78 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export interface OfflineCredential {
-  email: string;
+  identifier: string; // email or phone
   passwordHash: string;
   user: User;
   lastLogin: string;
 }
 
 /**
+ * Normalizes identifiers for consistent lookup.
+ */
+function normalizeIdentifier(id: string): string {
+  let clean = id.toLowerCase().trim().replace(/\s+/g, "");
+  if (/^\+?\d+$/.test(clean)) {
+    if (clean.startsWith("+251")) clean = "0" + clean.slice(4);
+    else if (clean.startsWith("251")) clean = "0" + clean.slice(3);
+    else if (clean.length === 9 && (clean.startsWith("9") || clean.startsWith("7"))) clean = "0" + clean;
+  }
+  return clean;
+}
+
+/**
  * Saves or updates offline credentials for a user.
  */
 export async function saveOfflineCredentials(user: User, password: string) {
-  const passwordHash = await hashPassword(password);
-  const credential: OfflineCredential = {
-    email: user.email.toLowerCase(),
-    passwordHash,
-    user,
-    lastLogin: new Date().toISOString(),
-  };
-  
-  await set(credential.email, credential, store);
+  try {
+    const passwordHash = await hashPassword(password);
+    const lastLogin = new Date().toISOString();
+    
+    const ids = [user.email, user.phoneNumber].filter(Boolean) as string[];
+    const normalizedIds = [...new Set(ids.map(normalizeIdentifier))];
+
+    console.log(`[OfflineAuth] Saving credentials for: ${normalizedIds.join(", ")}`);
+
+    for (const id of normalizedIds) {
+      const credential: OfflineCredential = {
+        identifier: id,
+        passwordHash,
+        user,
+        lastLogin,
+      };
+      await set(id, credential, store);
+      console.log(`[OfflineAuth] ✓ Offline credentials saved for: ${id}`);
+    }
+  } catch (err) {
+    console.error("[OfflineAuth] Failed to save credentials:", err);
+  }
 }
 
 /**
  * Verifies credentials locally when offline.
  */
-export async function verifyOfflineCredentials(email: string, password: string): Promise<User | null> {
-  const normalizedEmail = email.toLowerCase();
-  const storedCreds = await get<OfflineCredential>(normalizedEmail, store);
+export async function verifyOfflineCredentials(identifier: string, password: string): Promise<User | null> {
+  const nid = normalizeIdentifier(identifier);
+  console.log(`[OfflineAuth] Verifying credentials for: "${nid}"`);
   
-  if (!storedCreds) return null;
-  
-  const inputHash = await hashPassword(password);
-  if (inputHash === storedCreds.passwordHash) {
-    return storedCreds.user;
+  try {
+    const storedCreds = await get<OfflineCredential>(nid, store);
+    
+    if (!storedCreds) {
+      console.warn(`[OfflineAuth] No cached credentials found for: "${nid}"`);
+      return null;
+    }
+
+    const inputHash = await hashPassword(password);
+    if (inputHash === storedCreds.passwordHash) {
+      console.info(`[OfflineAuth] SUCCESS: Verified ${storedCreds.user.username}`);
+      return storedCreds.user;
+    }
+
+    console.error(`[OfflineAuth] FAILURE: Incorrect password for ${nid}`);
+    return null;
+  } catch (err) {
+    console.error("[OfflineAuth] Error during verification:", err);
+    return null;
   }
-  
-  return null;
 }

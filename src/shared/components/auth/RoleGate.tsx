@@ -18,9 +18,12 @@ type RoleGateProps = {
 export function RoleGate({ allowedRoles, children }: RoleGateProps) {
   const { pathname } = useLocation();
   const { user, isLoading } = useAuth();
+  
   const roleFromUser = user?.role ? (String(user.role).toLowerCase() as UserRole) : null;
   const stored = getStoredRole();
   const role = roleFromUser ?? (stored?.toLowerCase() as UserRole | null);
+
+  console.log(`[RoleGate] Render: path=${pathname}, user=${!!user}, role=${role}, isLoading=${isLoading}`);
 
   const isAllowed = role ? allowedRoles.some((r) => r.toLowerCase() === role) : false;
 
@@ -32,11 +35,15 @@ export function RoleGate({ allowedRoles, children }: RoleGateProps) {
     );
   }
 
-  if (!user || !role) {
+  // Final check: if no role is found in state OR storage, then we are definitely out.
+  // We prioritize the role from storage if offline to avoid flicker.
+  if (!role && !isLoading) {
+    console.warn(`[RoleGate] No role found at ${pathname}. Redirecting to login.`);
     return <Navigate to={`/login?next=${encodeURIComponent(pathname)}`} replace />;
   }
 
   if (!isAllowed) {
+    console.error(`[RoleGate] Access Denied: Role '${role}' not in allowed roles: ${allowedRoles.join(",")}`);
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="rounded-full bg-red-500/10 p-4 text-red-500 mb-4">
