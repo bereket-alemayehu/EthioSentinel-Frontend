@@ -18,6 +18,7 @@ import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { getRecaptchaSiteKey } from '@/shared/lib/recaptcha';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -31,6 +32,7 @@ export default function LoginPage() {
   
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaSiteKey = getRecaptchaSiteKey();
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -177,18 +179,24 @@ export default function LoginPage() {
               </label>
             </div>
 
-            <div className="flex justify-center mt-2">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                onChange={(token) => setRecaptchaToken(token)}
-                theme="light"
-              />
+            <div className="flex flex-col items-center justify-center mt-2 gap-2">
+              {recaptchaSiteKey ? (
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={recaptchaSiteKey}
+                  onChange={(token) => setRecaptchaToken(token)}
+                  theme="light"
+                />
+              ) : (
+                <p className="text-center text-xs text-amber-100/95 px-2">
+                  reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
+                </p>
+              )}
             </div>
 
             <Button 
               type="submit" 
-              disabled={isLoading || !recaptchaToken}
+              disabled={isLoading || !recaptchaSiteKey || !recaptchaToken}
               className="w-full h-12 bg-white text-[#0f6b7c] hover:bg-white/90 active:scale-[0.98] transition-all font-bold text-base rounded-xl mt-4 shadow-xl"
             >
               {isLoading ? (

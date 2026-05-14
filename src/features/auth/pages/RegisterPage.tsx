@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { registerApi, verifyOtpApi, setStoredUser, resendOtpApi } from '@/features/auth/api/auth';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { getRecaptchaSiteKey } from '@/shared/lib/recaptcha';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ export default function RegisterPage() {
 
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaSiteKey = getRecaptchaSiteKey();
 
   React.useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -182,18 +184,24 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-center mt-2">
-                  <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                    onChange={(token) => setRecaptchaToken(token)}
-                    theme="light"
-                  />
+                <div className="flex flex-col items-center justify-center mt-2 gap-2">
+                  {recaptchaSiteKey ? (
+                    <ReCAPTCHA
+                      ref={recaptchaRef}
+                      sitekey={recaptchaSiteKey}
+                      onChange={(token) => setRecaptchaToken(token)}
+                      theme="light"
+                    />
+                  ) : (
+                    <p className="text-center text-xs text-amber-100/95 px-2">
+                      reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
+                    </p>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading || !recaptchaToken}
+                  disabled={loading || !recaptchaSiteKey || !recaptchaToken}
                   className="w-full h-12 bg-white text-[#0f6b7c] hover:bg-white/90 font-bold rounded-xl mt-2"
                 >
                   {loading ? t('authenticating') : (
