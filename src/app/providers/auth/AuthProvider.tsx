@@ -6,7 +6,6 @@ import {
   getStoredUser,
   setStoredUser,
   setStoredRole,
-  syncGeolocationFromDeviceApi,
 } from "@/features/auth/api/auth";
 import type { User, AuthContextType } from "@/features/auth/types";
 import type { UserRole } from "@/shared/types";
@@ -45,36 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  // One session attempt: refine assigned district from device GPS when permitted (requires HTTPS or localhost).
-  useEffect(() => {
-    if (!user?.id || typeof window === "undefined") return;
-    if (!navigator.geolocation) return;
 
-    const key = `ethio-geo-synced-session:${user.id}`;
-    if (sessionStorage.getItem(key)) return;
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const updated = await syncGeolocationFromDeviceApi(
-            pos.coords.latitude,
-            pos.coords.longitude,
-          );
-          setUser(updated);
-          setStoredUser(updated);
-          sessionStorage.setItem(key, "1");
-        } catch (e) {
-          console.warn("Geolocation district sync skipped:", e);
-        }
-      },
-      () => {
-        sessionStorage.setItem(key, "1");
-      },
-      { enableHighAccuracy: false, timeout: 20_000, maximumAge: 300_000 },
-    );
-  }, [user?.id]);
-
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, recaptchaToken: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -107,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // ── Handle Online Login ────────────────────────────────────────────────
     try {
-      const userData = await loginApi(email, password);
+      const userData = await loginApi(email, password, recaptchaToken);
       setUser(userData);
       setStoredUser(userData);
       

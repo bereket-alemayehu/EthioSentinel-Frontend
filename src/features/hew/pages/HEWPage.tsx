@@ -201,7 +201,7 @@ export default function HEWPage() {
     }
 
     if (form.date && form.date > todayDate) {
-      toast.error("Observation date cannot be in the future");
+      toast.error(t("futureDateError") || "Report date cannot be in the future");
       return;
     }
 
@@ -254,7 +254,7 @@ export default function HEWPage() {
     }
 
     if (editForm.date && editForm.date > todayDate) {
-      toast.error("Observation date cannot be in the future");
+      toast.error(t("futureDateError") || "Report date cannot be in the future");
       return;
     }
 

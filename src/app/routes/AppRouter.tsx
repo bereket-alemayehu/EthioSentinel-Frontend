@@ -7,6 +7,7 @@ import { RoleHomeRedirect } from '@/app/routes/RoleHomeRedirect';
 // Lazy load pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
 const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'));
 const SearchPage = lazy(() => import('@/features/search/pages/SearchPage'));
 const CitizenPage = lazy(() => import('@/features/citizen/pages/CitizenPage'));
 const HEWPage = lazy(() => import('@/features/hew/pages/HEWPage'));
@@ -42,6 +43,14 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <Navigate to="/auth/register" replace />,
+  },
+  {
+    path: '/auth/forgot-password',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <ForgotPasswordPage />
+      </Suspense>
+    ),
   },
   {
     path: '/',

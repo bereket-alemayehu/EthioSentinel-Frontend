@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, sendPublicChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
+import { useGrammarCheck } from 'react-grammar-kit';
 
 // Chat messages interface
 interface Message {
@@ -109,7 +110,14 @@ export function Chatbot() {
     });
   }, [i18n.language, getGreeting, historyLoading]);
 
-  const [input, setInput] = useState('');
+  const {
+    text: input,
+    setText: setInput,
+    suggestions,
+    loading: grammarLoading,
+    applyFix,
+    highlightedText,
+  } = useGrammarCheck('');
   const [isLoading, setIsLoading] = useState(false);
   const [guestCount, setGuestCount] = useState(() => {
     if (typeof window === 'undefined') return 0;

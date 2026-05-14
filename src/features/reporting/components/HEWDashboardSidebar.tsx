@@ -40,30 +40,17 @@ export const HEWDashboardSidebar: React.FC<HEWDashboardSidebarProps> = ({
                 </div>
                 <div>
                     <h3 className="text-2xl font-black text-dark-300 dark:text-white tracking-tight uppercase">{user?.username}</h3>
-                    <p className="text-xs text-light-500 font-black uppercase tracking-[0.2em]">{t("healthWorker")}</p>
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-xs text-light-500 font-black uppercase tracking-[0.2em]">{t("healthWorker")}</p>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-500/10 px-2 py-1 rounded-md w-fit">
+                            <MapPin className="w-3 h-3" />
+                            {user?.assignedDistrict || t("notAssigned")}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-                <div className="group flex-between p-4 rounded-2xl bg-light-700/50 dark:bg-white/5 border border-white/10 transition-all hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
-                    <div className="flex-start gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex-center text-primary-500">
-                            <MapPin className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">{t("operationalDistrict")}</span>
-                    </div>
-                    <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.assignedDistrict || t("notAssigned")}</span>
-                </div>
-                <div className="group flex-between p-4 rounded-2xl bg-light-700/50 dark:bg-white/5 border border-white/10 transition-all hover:bg-white dark:hover:bg-white/10 hover:shadow-md">
-                    <div className="flex-start gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-accent-500/10 flex-center text-accent-500">
-                            <Activity className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-bold text-light-500 dark:text-light-700 uppercase">{t("supervisoryRegion")}</span>
-                    </div>
-                    <span className="text-sm font-black text-dark-300 dark:text-white uppercase tracking-tight">{user?.region || t("national")}</span>
-                </div>
-            </div>
+
         </motion.div>
 
         <motion.div 

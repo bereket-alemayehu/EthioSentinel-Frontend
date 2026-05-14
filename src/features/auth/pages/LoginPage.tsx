@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
+  User,
   Mail, 
   Lock, 
   ArrowRight, 
@@ -16,6 +17,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -27,6 +29,9 @@ export default function LoginPage() {
     rememberMe: false
   });
   
+  const recaptchaRef = React.useRef<ReCAPTCHA>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -46,11 +51,17 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!recaptchaToken) {
+      toast.error('Please verify that you are human');
+      return;
+    }
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email, formData.password, recaptchaToken);
       toast.success(t('signIn'));
     } catch (err: any) {
       toast.error(err.message || t('logoutFailed'));
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     }
   };
 
@@ -106,14 +117,14 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">{t('emailAddress')}</label>
+                <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">{t('emailOrPhone')}</label>
                 <div className="relative group">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-white/80 transition-colors">
-                    <Mail className="w-4.5 h-4.5" />
+                    <User className="w-4.5 h-4.5" />
                   </div>
                   <Input 
-                    type="email" 
-                    placeholder="name@example.com"
+                    type="text" 
+                    placeholder={t('emailOrPhonePlaceholder')}
                     required
                     className="h-12 pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-white/10 focus:border-white/30 transition-all rounded-xl no-focus"
                     value={formData.email}
@@ -165,9 +176,18 @@ export default function LoginPage() {
               </label>
             </div>
 
+            <div className="flex justify-center mt-2">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                onChange={(token) => setRecaptchaToken(token)}
+                theme="light"
+              />
+            </div>
+
             <Button 
               type="submit" 
-              disabled={isLoading}
+              disabled={isLoading || !recaptchaToken}
               className="w-full h-12 bg-white text-[#0f6b7c] hover:bg-white/90 active:scale-[0.98] transition-all font-bold text-base rounded-xl mt-4 shadow-xl"
             >
               {isLoading ? (
@@ -184,15 +204,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Footer info */}
-          <div className="mt-8 pt-6 border-t border-white/10 text-center relative z-10">
-            <p className="text-sm text-white/50">
-              {t('noAccount')} {' '}
-              <Link to="/auth/register" className="text-white font-bold hover:underline">
-                {t('createAccount')}
-              </Link>
-            </p>
-          </div>
+          <p className="mt-8 text-center text-sm text-white/60">
+            {t('noAccount')} <Link to="/auth/register" className="text-white font-bold hover:underline transition-all">{t('createAccount')}</Link>
+          </p>
         </div>
 
         {/* Dynamic Badges */}

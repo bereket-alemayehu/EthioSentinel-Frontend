@@ -30,17 +30,39 @@ function coerceUser(apiUser: User): User {
 
 export async function registerApi(input: {
   username: string;
-  email: string;
+  phoneNumber: string;
+  email?: string;
   password: string;
-  region: string;
+  region?: string;
   assignedDistrict?: string;
+  recaptchaToken: string;
 }): Promise<User> {
   const response = await api.post<AuthResponse>("/auth/register", input);
   return coerceUser(response.data.data.user);
 }
 
-export async function loginApi(email: string, password: string): Promise<User> {
-  const response = await api.post<AuthResponse>("/auth/login", { email, password });
+export async function verifyOtpApi(userId: string, code: string): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/verify-otp", { userId, code });
+  const user = coerceUser(response.data.data.user);
+  if (user.role) setStoredRole(user.role);
+  return user;
+}
+
+export async function resendOtpApi(userId: string): Promise<void> {
+  await api.post("/auth/resend-otp", { userId });
+}
+
+export async function forgotPasswordApi(phoneNumber: string): Promise<void> {
+  await api.post("/auth/forgot-password", { phoneNumber });
+}
+
+export async function resetPasswordApi(phoneNumber: string, otpCode: string, newPassword: string): Promise<void> {
+  await api.post("/auth/reset-password", { phoneNumber, otpCode, newPassword });
+}
+
+
+export async function loginApi(email: string, password: string, recaptchaToken: string): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/login", { email, password, recaptchaToken });
   const user = coerceUser(response.data.data.user);
   if (user.role) setStoredRole(user.role);
   return user;
