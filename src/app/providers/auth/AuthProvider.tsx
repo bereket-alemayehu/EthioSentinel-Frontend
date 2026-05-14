@@ -1,14 +1,30 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { loginApi, logoutApi, getMeApi, getStoredUser, setStoredUser } from "@/features/auth/api/auth";
+import {
+  loginApi,
+  logoutApi,
+  getMeApi,
+  getStoredUser,
+  setStoredUser,
+  setStoredRole,
+} from "@/features/auth/api/auth";
 import type { User, AuthContextType } from "@/features/auth/types";
+import type { UserRole } from "@/shared/types";
 import { toast } from "sonner";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getStoredUser());
+  const [user, setUser] = useState<User | null>(getStoredUser);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cached = getStoredUser();
+    if (cached?.role && !window.localStorage.getItem("ethio-role")) {
+      setStoredRole(String(cached.role).toLowerCase() as UserRole);
+    }
+  }, []);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -28,7 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+
+
+  const login = async (email: string, password: string, recaptchaToken: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -61,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // ── Handle Online Login ────────────────────────────────────────────────
     try {
-      const userData = await loginApi(email, password);
+      const userData = await loginApi(email, password, recaptchaToken);
       setUser(userData);
       setStoredUser(userData);
       
@@ -81,12 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       await logoutApi();
-      setUser(null);
     } catch (err) {
       console.error("Logout failed:", err);
-      // Still clear local state
-      setUser(null);
     } finally {
+      setUser(null);
       setIsLoading(false);
     }
   };

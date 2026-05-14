@@ -2,6 +2,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { getStoredRole } from "@/features/auth/api/auth";
+import { useAuth } from "@/app/providers/auth/AuthProvider";
 import { type UserRole } from "@/shared/types";
 
 type RoleGateProps = {
@@ -16,10 +17,22 @@ type RoleGateProps = {
  */
 export function RoleGate({ allowedRoles, children }: RoleGateProps) {
   const { pathname } = useLocation();
-  const role = getStoredRole()?.toLowerCase() as UserRole | null;
-  const isAllowed = role ? allowedRoles.some(r => r.toLowerCase() === role) : false;
+  const { user, isLoading } = useAuth();
+  const roleFromUser = user?.role ? (String(user.role).toLowerCase() as UserRole) : null;
+  const stored = getStoredRole();
+  const role = roleFromUser ?? (stored?.toLowerCase() as UserRole | null);
 
-  if (!role) {
+  const isAllowed = role ? allowedRoles.some((r) => r.toLowerCase() === role) : false;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !role) {
     return <Navigate to={`/login?next=${encodeURIComponent(pathname)}`} replace />;
   }
 

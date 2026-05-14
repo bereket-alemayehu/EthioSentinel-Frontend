@@ -51,3 +51,140 @@ export const getGeoStats = async (filters: {
   });
   return response.data.data;
 };
+
+export type AnomalyClassification = 'ANOMALY' | 'NORMAL';
+export type AnomalyMethod = 'ZSCORE' | 'ARIMA';
+
+export interface AnomalySignal {
+  id: string;
+  reportId: string | null;
+  district: string;
+  diseaseType: string;
+  currentCases: number;
+  historicalMean: number;
+  stdDev: number;
+  zScore: number | null;
+  classification: AnomalyClassification;
+  method: AnomalyMethod;
+  sampleSize: number;
+  lookbackStart: string | null;
+  lookbackEnd: string | null;
+  advisoryId: string | null;
+  alertId: string | null;
+  manual: boolean;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface AnomalySignalsPage {
+  data: AnomalySignal[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export const getAnomalies = async (filters: {
+  startDate?: string;
+  endDate?: string;
+  district?: string;
+  diseaseType?: string;
+  classification?: AnomalyClassification;
+  page?: number;
+  limit?: number;
+} = {}): Promise<AnomalySignalsPage> => {
+  const response = await api.get<{ data: AnomalySignalsPage }>(
+    '/analytics/anomalies',
+    { params: filters }
+  );
+  return response.data.data;
+};
+
+export interface AnomalyTimeseriesPoint {
+  date: string;
+  cases: number;
+  deaths: number;
+  reports: number;
+  zScore: number;
+  isAnomaly: boolean;
+}
+
+export interface AnomalyTimeseries {
+  district: string;
+  diseaseType: string;
+  windowDays: number;
+  lookbackStart: string;
+  lookbackEnd: string;
+  summary: {
+    mean: number;
+    stdDev: number;
+    threshold2Sigma: number;
+    threshold3Sigma: number;
+    sampleSize: number;
+    latestZScore: number;
+  };
+  series: AnomalyTimeseriesPoint[];
+  signals: AnomalySignal[];
+}
+
+export const getAnomalyTimeseries = async (params: {
+  district: string;
+  diseaseType: string;
+  days?: number;
+}): Promise<AnomalyTimeseries> => {
+  const response = await api.get<{ data: AnomalyTimeseries }>(
+    '/analytics/anomalies/timeseries',
+    { params }
+  );
+  return response.data.data;
+};
+
+export interface AdHocAnomalyResult {
+  district: string;
+  diseaseType: string;
+  currentCases: number;
+  historicalMean: number;
+  stdDev: number;
+  zScore?: number;
+  classification: AnomalyClassification;
+  sampleSize: number;
+  lookbackStart: string;
+  lookbackEnd: string;
+  thresholdSigma: number;
+  signalId?: string;
+}
+
+export const runAnomaly = async (payload: {
+  district: string;
+  diseaseType: string;
+  lookbackDays?: number;
+  persist?: boolean;
+  notes?: string;
+}): Promise<AdHocAnomalyResult> => {
+  const response = await api.post<{ data: AdHocAnomalyResult }>(
+    '/analytics/anomalies/run',
+    payload
+  );
+  return response.data.data;
+};
+
+export const exportAnalyticsBlob = async (
+  format: 'csv' | 'excel' | 'pdf'
+): Promise<Blob> => {
+  const response = await api.get('/analytics/reports', {
+    params: { export: format, limit: 200 },
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};
+
+export const exportAnomaliesBlob = async (filters: {
+  startDate?: string;
+  endDate?: string;
+  district?: string;
+  diseaseType?: string;
+  classification?: AnomalyClassification;
+} = {}): Promise<Blob> => {
+  const response = await api.get('/analytics/anomalies', {
+    params: { ...filters, export: 'csv', limit: 200 },
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};

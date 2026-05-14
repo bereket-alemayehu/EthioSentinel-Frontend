@@ -28,13 +28,13 @@ export function AlertApprovals({
         <div className="space-y-1">
           <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Bell className="w-5 h-5 text-teal-600" />
-            Pending Alert Approvals
+            {t("pendingAlertApprovalsTitle")}
           </CardTitle>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Review and authorize system-generated advisories</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t("pendingAlertApprovalsDesc")}</p>
         </div>
         {!loading && (
           <Badge variant="secondary" className="px-3.5 py-1 text-xs font-bold rounded-full bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 border-teal-100 dark:border-teal-900/50 italic">
-            {alerts.length} pending
+            {t("pendingCount", { count: alerts.length })}
           </Badge>
         )}
       </CardHeader>
@@ -44,11 +44,11 @@ export function AlertApprovals({
           <table className="w-full">
             <thead className="bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-xl border-b dark:border-slate-800 z-10">
               <tr className="text-left">
-                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Severity</th>
-                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">🦠 Disease</th>
-                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Advisory Summary</th>
-                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("severityColumn")}</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">🦠 {t("diseaseColumn")}</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("advisorySummary")}</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("statusColumn")}</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">{t("actionsColumn")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -70,7 +70,7 @@ export function AlertApprovals({
                       </div>
                       <div className="space-y-1">
                         <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">{t("noPendingAlerts")}</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">All alerts have been reviewed and processed by the system.</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{t("allAlertsProcessed")}</p>
                       </div>
                     </div>
                   </td>
@@ -88,8 +88,8 @@ export function AlertApprovals({
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">{alert.disease || "Global Advisory"}</span>
-                          <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-1 opacity-60">REF-{alert.id.toString().padStart(6, '0')}</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">{alert.disease || t("tableGlobalAdvisory")}</span>
+                          <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-1 opacity-60">{t("refPrefix")}-{alert.id.toString().padStart(6, '0')}</span>
                         </div>
                       </td>
                       <td className="px-8 py-6 max-w-md">
@@ -103,7 +103,7 @@ export function AlertApprovals({
                           alert.status === "Approved" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                         )}>
                           <span className={cn("w-1.5 h-1.5 rounded-full", alert.status === "Approved" ? "bg-emerald-500" : "bg-amber-500")} />
-                          {alert.status === "Approved" ? "Authorized" : "Awaiting Review"}
+                          {alert.status === "Approved" ? t("authorizedStatus") : t("awaitingReview")}
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">

@@ -1,15 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useGrammarCheck } from 'react-grammar-kit';
-import { MessageCircle, X, Send, Bot, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, X, Send, Bot, Trash2, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/utils/cn';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
+import { useGrammarCheck } from 'react-grammar-kit';
 
 // Chat messages interface
 interface Message {
@@ -20,75 +19,93 @@ interface Message {
 }
 
 export function Chatbot() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Initial message localized
-  const getGreeting = () => {
-    return i18n.language === 'am' 
+
+  const getGreeting = useCallback(() => {
+    return i18n.language === 'am'
       ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ። ዛሬ በጤና ክትትል ረገድ እንዴት ልረዳዎት እችላለሁ?`
       : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
-  };
+  }, [i18n.language]);
 
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: '1',
-      text: getGreeting(),
+      text:
+        i18n.language === 'am'
+          ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ።`
+          : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}.`,
       sender: 'bot',
       timestamp: new Date(),
     },
   ]);
+  const historyRequestGen = useRef(0);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Update greeting if language changes and no other messages exist
   useEffect(() => {
-    if (messages.length === 1 && messages[0].sender === 'bot') {
-      setMessages([{
-        ...messages[0],
-        text: getGreeting()
-      }]);
+    historyRequestGen.current += 1;
+    const gen = historyRequestGen.current;
+
+    const greetOnly = (): Message[] => [
+      {
+        id: `greet-${userId || 'guest'}-${gen}`,
+        text: getGreeting(),
+        sender: 'bot',
+        timestamp: new Date(),
+      },
+    ];
+
+    if (!userId) {
+      setHistoryLoading(false);
+      setMessages(greetOnly());
+      return;
     }
-  }, [i18n.language]);
 
-  useEffect(() => {
+    setHistoryLoading(true);
+    setMessages([]);
+
     const loadHistory = async () => {
-      if (!user) {
-        setMessages([{
-          id: 'guest-greeting',
-          text: getGreeting(),
-          sender: 'bot',
-          timestamp: new Date(),
-        }]);
-        return;
-      }
-
       try {
         const history = await getChatHistoryApi();
-        if (history.length === 0) {
-          setMessages([{
-            id: 'welcome',
-            text: getGreeting(),
-            sender: 'bot',
-            timestamp: new Date(),
-          }]);
-          return;
-        }
+        if (gen !== historyRequestGen.current) return;
 
-        setMessages(history.map((item) => ({
-          id: item.id,
-          text: item.text,
-          sender: item.role === 'USER' ? 'user' : 'bot',
-          timestamp: new Date(item.createdAt),
-        })));
+        if (history.length === 0) {
+          setMessages(greetOnly());
+        } else {
+          setMessages(
+            history.map((item) => ({
+              id: item.id,
+              text: item.text,
+              sender: item.role === 'USER' ? 'user' : 'bot',
+              timestamp: new Date(item.createdAt),
+            })),
+          );
+        }
       } catch (error) {
         console.error('Failed to load chat history', error);
+        if (gen !== historyRequestGen.current) return;
+        setMessages(greetOnly());
+      } finally {
+        if (gen === historyRequestGen.current) {
+          setHistoryLoading(false);
+        }
       }
     };
 
-    if (isOpen) {
-      loadHistory();
-    }
-  }, [isOpen, user]);
+    void loadHistory();
+  }, [userId, getGreeting]);
+
+  useEffect(() => {
+    if (historyLoading) return;
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].sender === 'bot') {
+        return [{ ...prev[0], id: prev[0].id, text: getGreeting() }];
+      }
+      return prev;
+    });
+  }, [i18n.language, getGreeting, historyLoading]);
 
   const {
     text: input,
@@ -200,6 +217,7 @@ export function Chatbot() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            key={userId || 'guest'}
             initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -242,7 +260,14 @@ export function Chatbot() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10 custom-scrollbar">
-              {messages.map((m) => (
+              {historyLoading && (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+                  <p>{t('chatLoadingHistory')}</p>
+                </div>
+              )}
+              {!historyLoading &&
+                messages.map((m) => (
                 <div
                   key={m.id}
                   className={cn(
@@ -287,7 +312,7 @@ export function Chatbot() {
                   </div>
                 </div>
               ))}
-              {isLoading && (
+              {!historyLoading && isLoading && (
                 <div className="flex justify-start">
                   <div className="bg-background rounded-2xl rounded-tl-none px-4 py-3 border border-border/50 shadow-sm flex items-center gap-2 ring-1 ring-black/5">
                     <div className="flex gap-1.5">
@@ -310,63 +335,30 @@ export function Chatbot() {
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              {!historyLoading && <div ref={messagesEndRef} />}
             </div>
 
             {/* Input */}
-            <div className="border-t bg-background">
-              {/* Grammar suggestion preview */}
-              {input.trim() && suggestions.length > 0 && (
-                <div className="px-4 pt-3 pb-1">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      ✏️ Grammar suggestions
-                    </span>
-                    <span className="text-[10px] bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-bold px-2 py-0.5 rounded-full">
-                      {suggestions.length} {suggestions.length === 1 ? 'issue' : 'issues'}
-                    </span>
-                  </div>
-                  <div
-                    className="text-sm leading-relaxed rounded-xl bg-muted/40 border border-border/50 px-3 py-2 min-h-[36px] select-none"
-                    style={{ wordBreak: 'break-word' }}
-                  >
-                    {highlightedText(applyFix)}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">Click a highlighted word to apply the fix</p>
-                </div>
-              )}
-              {grammarLoading && input.trim() && (
-                <div className="px-4 pt-2 pb-0">
-                  <span className="text-[10px] text-muted-foreground animate-pulse">Checking grammar…</span>
-                </div>
-              )}
-              <form
-                onSubmit={handleSend}
-                className="p-4 flex gap-2 items-center"
+            <form
+              onSubmit={handleSend}
+              className="p-4 border-t bg-background flex gap-2 items-center"
+            >
+              <Input
+                placeholder="Type your message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={historyLoading}
+                className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl"
+              />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={!input.trim() || isLoading || historyLoading}
+                className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
               >
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Type your message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl pr-10"
-                  />
-                  {input.trim() && suggestions.length > 0 && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center pointer-events-none">
-                      {suggestions.length > 9 ? '9+' : suggestions.length}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!input.trim() || isLoading}
-                  className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
-                >
-                  <Send className="w-4 h-4 ml-0.5" />
-                </Button>
-              </form>
-            </div>
+                <Send className="w-4 h-4 ml-0.5" />
+              </Button>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>

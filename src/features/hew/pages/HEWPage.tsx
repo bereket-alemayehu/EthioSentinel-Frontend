@@ -199,6 +199,12 @@ export default function HEWPage() {
       return;
     }
 
+    const today = new Date().toISOString().split('T')[0];
+    if (form.date > today) {
+      toast.error(t("futureDateError") || "Report date cannot be in the future");
+      return;
+    }
+
     const payload = { ...form };
     if (!navigator.onLine) {
       await queueHewReport(payload);
@@ -244,6 +250,12 @@ export default function HEWPage() {
 
     if (editForm.deaths > editForm.cases) {
       toast.error(t("mortalityError") || "deathCount cannot exceed caseCount");
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (editForm.date > today) {
+      toast.error(t("futureDateError") || "Report date cannot be in the future");
       return;
     }
 

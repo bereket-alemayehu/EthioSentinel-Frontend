@@ -4,17 +4,16 @@ import { useAdvisoryDrafts, useApprovedAdvisories, useUpdateAdvisoryStatusMutati
 import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 
-import { AdminHeader } from "@/features/admin/components/AdminHeader";
+import { AdminHeader, type AdminTab } from "@/features/admin/components/AdminHeader";
 import { AlertApprovals } from "@/features/admin/components/AlertApprovals";
 import { AdvisoryManagement } from "@/features/admin/components/AdvisoryManagement";
 import { MapIntelligence } from "@/features/admin/components/MapIntelligence";
+import { AnomalyAnalysis } from "@/features/admin/components/AnomalyAnalysis";
 import { aggregateByDistrict } from "@/features/admin/utils";
 
 export default function AdminPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"alerts" | "advisories" | "map">(
-    "alerts"
-  );
+  const [activeTab, setActiveTab] = useState<AdminTab>("alerts");
   const {
     data: alerts = [],
     isLoading: loading,
@@ -127,6 +126,10 @@ export default function AdminPage() {
           maxCases={maxCases}
           t={t}
         />
+      )}
+
+      {activeTab === "anomaly" && (
+        <AnomalyAnalysis geoStats={geoStats} geoLoading={geoLoading} t={t} />
       )}
     </div>
   );

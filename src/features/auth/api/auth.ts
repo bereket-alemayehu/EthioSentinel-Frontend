@@ -19,9 +19,51 @@ export interface AuthResponse {
   };
 }
 
-export async function loginApi(email: string, password: string): Promise<User> {
-  const response = await api.post<AuthResponse>("/auth/login", { email, password });
-  const user = response.data.data.user;
+function coerceUser(apiUser: User): User {
+  const roleRaw = apiUser.role as unknown as string;
+  const role =
+    typeof roleRaw === "string"
+      ? (roleRaw.toLowerCase() as UserRole)
+      : apiUser.role;
+  return { ...apiUser, role };
+}
+
+export async function registerApi(input: {
+  username: string;
+  phoneNumber: string;
+  email?: string;
+  password: string;
+  region?: string;
+  assignedDistrict?: string;
+  recaptchaToken: string;
+}): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/register", input);
+  return coerceUser(response.data.data.user);
+}
+
+export async function verifyOtpApi(userId: string, code: string): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/verify-otp", { userId, code });
+  const user = coerceUser(response.data.data.user);
+  if (user.role) setStoredRole(user.role);
+  return user;
+}
+
+export async function resendOtpApi(userId: string): Promise<void> {
+  await api.post("/auth/resend-otp", { userId });
+}
+
+export async function forgotPasswordApi(phoneNumber: string): Promise<void> {
+  await api.post("/auth/forgot-password", { phoneNumber });
+}
+
+export async function resetPasswordApi(phoneNumber: string, otpCode: string, newPassword: string): Promise<void> {
+  await api.post("/auth/reset-password", { phoneNumber, otpCode, newPassword });
+}
+
+
+export async function loginApi(email: string, password: string, recaptchaToken: string): Promise<User> {
+  const response = await api.post<AuthResponse>("/auth/login", { email, password, recaptchaToken });
+  const user = coerceUser(response.data.data.user);
   if (user.role) setStoredRole(user.role);
   return user;
 }
@@ -33,7 +75,21 @@ export async function logoutApi(): Promise<void> {
 
 export async function getMeApi(): Promise<User> {
   const response = await api.get<AuthResponse>("/auth/me");
-  const user = response.data.data.user;
+  const user = coerceUser(response.data.data.user);
+  if (user.role) setStoredRole(user.role);
+  return user;
+}
+
+/** Updates `assignedDistrict` / `region` on the server from device GPS (nearest configured district). */
+export async function syncGeolocationFromDeviceApi(
+  latitude: number,
+  longitude: number,
+): Promise<User> {
+  const response = await api.patch<AuthResponse>("/auth/me/geolocation", {
+    latitude,
+    longitude,
+  });
+  const user = coerceUser(response.data.data.user);
   if (user.role) setStoredRole(user.role);
   return user;
 }
@@ -44,9 +100,12 @@ export function getStoredRole(): UserRole | null {
   return (role?.toLowerCase() as UserRole) || null;
 }
 
-export function setStoredRole(role: UserRole) {
+export function setStoredRole(role: UserRole | string) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(AUTH_ROLE_KEY, role);
+  window.localStorage.setItem(
+    AUTH_ROLE_KEY,
+    String(role).toLowerCase(),
+  );
 }
 
 export function clearStoredRole() {

@@ -42,14 +42,7 @@ export const EditReportModal: React.FC<EditReportModalProps> = ({
               className="z-50"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">District</label>
-            <Input
-              value={editForm.district}
-              readOnly
-              className="h-12 bg-light-700/60 dark:bg-black/20 border-white/5 rounded-xl font-black text-primary-500 cursor-not-allowed uppercase"
-            />
-          </div>
+
           <div className="space-y-2">
             <label className="text-[10px] font-black text-light-500 uppercase tracking-widest ml-1">Date</label>
             <Input

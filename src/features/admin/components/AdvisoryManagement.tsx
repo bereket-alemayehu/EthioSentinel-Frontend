@@ -3,6 +3,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { FileText, Clock, CheckCircle, ShieldCheck, CheckCircle2, Trash2, Undo2 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { getSeverityLevel } from "@/features/admin/utils";
+import { useTranslation } from "react-i18next";
 
 interface AdvisoryManagementProps {
   drafts: any[];
@@ -27,6 +28,7 @@ export function AdvisoryManagement({
   isActionPending,
   pendingAction
 }: AdvisoryManagementProps) {
+  const { t } = useTranslation();
   const currentList = subTab === "pending" ? drafts : approved;
   const isListLoading = subTab === "pending" ? isLoading : approvedLoading;
 
@@ -43,7 +45,7 @@ export function AdvisoryManagement({
         >
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Pending Drafts
+            {t("draftsTab")}
             <Badge variant="secondary" className="ml-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
               {drafts.length}
             </Badge>
@@ -59,7 +61,7 @@ export function AdvisoryManagement({
         >
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
-            Approved List
+            {t("approvedTab")}
             <Badge variant="secondary" className="ml-1 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400">
               {approved.length}
             </Badge>
@@ -73,12 +75,10 @@ export function AdvisoryManagement({
           <div className="space-y-1">
             <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <FileText className="w-5 h-5 text-teal-600" />
-              {subTab === "pending" ? "Health Advisory Drafts" : "Published Advisories"}
+              {subTab === "pending" ? t("healthAdvisoryDrafts") : t("publishedAdvisories")}
             </CardTitle>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-              {subTab === "pending" 
-                ? "Review and publish public health advisories for citizens" 
-                : "Currently visible to citizens on their dashboard"}
+              {subTab === "pending" ? t("draftsDesc") : t("publishedDesc")}
             </p>
           </div>
         </CardHeader>
@@ -88,10 +88,10 @@ export function AdvisoryManagement({
             <table className="w-full">
               <thead className="bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-xl border-b dark:border-slate-800 z-10">
                 <tr className="text-left">
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Risk Level</th>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Disease & Location</th>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Advisory Content</th>
-                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("riskLevelColumn")}</th>
+                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("diseaseLocationColumn")}</th>
+                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("advisoryContentColumn")}</th>
+                  <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">{t("actionsColumn")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -100,7 +100,7 @@ export function AdvisoryManagement({
                     <td colSpan={4} className="py-32 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="h-10 w-10 border-3 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
-                        <span className="text-sm font-bold text-slate-400 tracking-wide">Syncing...</span>
+                        <span className="text-sm font-bold text-slate-400 tracking-wide">{t("syncingLabel")}</span>
                       </div>
                     </td>
                   </tr>
@@ -112,8 +112,8 @@ export function AdvisoryManagement({
                           <ShieldCheck className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                         </div>
                         <div className="space-y-1">
-                          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">No {subTab} items</h3>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">No advisories found in this category.</p>
+                          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">{t("noItemsInCategory")}</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{t("noAdvisoriesCategory")}</p>
                         </div>
                       </div>
                     </td>
@@ -136,7 +136,7 @@ export function AdvisoryManagement({
                           <div className="flex flex-col">
                             <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">{advisory.diseaseType}</span>
                             <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                              {advisory.district?.name || advisory.region?.name || "National"}
+                              {advisory.district?.name || advisory.region?.name || t("nationalShort")}
                             </span>
                           </div>
                         </td>
@@ -157,7 +157,7 @@ export function AdvisoryManagement({
                                   onClick={() => void handleUpdate(advisory.id, "approve")}
                                   disabled={isPending}
                                   className="h-9 w-9 flex items-center justify-center rounded-xl bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 transition-all shadow-md active:scale-95"
-                                  title="Publish"
+                                  title={t("publishAction")}
                                 >
                                   {isPending && action === "approve" ? (
                                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -170,7 +170,7 @@ export function AdvisoryManagement({
                                   onClick={() => void handleUpdate(advisory.id, "reject")}
                                   disabled={isPending}
                                   className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 transition-all active:scale-95"
-                                  title="Delete"
+                                  title={t("deleteAction")}
                                 >
                                   {isPending && action === "reject" ? (
                                     <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
@@ -185,14 +185,14 @@ export function AdvisoryManagement({
                                 onClick={() => void handleUpdate(advisory.id, "withdraw")}
                                 disabled={isPending}
                                 className="h-9 px-4 flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400 transition-all active:scale-95 text-xs font-bold"
-                                title="Withdraw"
+                                title={t("withdrawAction")}
                               >
                                 {isPending && action === "withdraw" ? (
                                   <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
                                 ) : (
                                   <>
                                     <Undo2 className="w-4 h-4" />
-                                    Withdraw
+                                    {t("withdrawAction")}
                                   </>
                                 )}
                               </button>

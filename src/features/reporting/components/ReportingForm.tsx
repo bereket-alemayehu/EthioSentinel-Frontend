@@ -61,14 +61,7 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
                     />
                 </div>
 
-                <div className="space-y-3">
-                    <label className="text-[10px] font-black text-light-500 dark:text-light-700 uppercase tracking-widest ml-1">Operational Area (District)</label>
-                    <Input 
-                        value={form.district}
-                        readOnly
-                        className="h-14 bg-light-700/60 dark:bg-black/20 border-slate-200 dark:border-white/5 rounded-2xl font-black text-primary-500 p-6 text-lg cursor-not-allowed uppercase"
-                    />
-                </div>
+
 
                 <div className="space-y-3">
                     <label className="text-[10px] font-black text-light-500 dark:text-light-700 uppercase tracking-widest ml-1">Observation Date</label>
@@ -78,6 +71,7 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
                             value={form.date}
                             onChange={e => setForm({...form, date: e.target.value})}
                             required
+                            max={new Date().toISOString().split('T')[0]}
                             className="h-14 bg-light-700/40 dark:bg-white/5 border-slate-200 dark:border-white/10 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all font-black p-6 text-lg shadow-inner"
                         />
                     </div>
