@@ -11,8 +11,22 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, AlertTriangle, ArrowRight, BarChart3, Map as MapIcon, Table2, FlaskConical } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/ui/card";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Map as MapIcon,
+  Table2,
+  FlaskConical,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/cn";
@@ -40,7 +54,11 @@ interface AnomalyAnalysisProps {
   t: (key: string) => string;
 }
 
-export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProps) {
+export function AnomalyAnalysis({
+  geoStats,
+  geoLoading,
+  t,
+}: AnomalyAnalysisProps) {
   const [subView, setSubView] = useState<SubView>("chart");
   const [page, setPage] = useState(1);
   const [selectedRegionId, setSelectedRegionId] = useState("");
@@ -48,7 +66,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
   const [selectedDiseaseName, setSelectedDiseaseName] = useState("");
   const [lookbackDays, setLookbackDays] = useState(7);
   const [persistSignal, setPersistSignal] = useState(false);
-  const [classificationFilter, setClassificationFilter] = useState<"" | "ANOMALY" | "NORMAL">("");
+  const [classificationFilter, setClassificationFilter] = useState<
+    "" | "ANOMALY" | "NORMAL"
+  >("");
 
   const { data: regions = [], isLoading: regionsLoading } = useRegions();
   const { data: diseases = [] } = useQuery({
@@ -75,7 +95,8 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
     [page, selectionFilters],
   );
 
-  const { data: anomaliesPage, isLoading: anomaliesLoading } = useAnomalies(anomalyQuery);
+  const { data: anomaliesPage, isLoading: anomaliesLoading } =
+    useAnomalies(anomalyQuery);
 
   const hotspotQuery = useMemo(
     () => ({
@@ -92,10 +113,15 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
 
   const timeseriesParams =
     selectedDistrictName && selectedDiseaseName
-      ? { district: selectedDistrictName, diseaseType: selectedDiseaseName, days: 30 }
+      ? {
+          district: selectedDistrictName,
+          diseaseType: selectedDiseaseName,
+          days: 30,
+        }
       : null;
 
-  const { data: ts, isLoading: tsLoading } = useAnomalyTimeseries(timeseriesParams);
+  const { data: ts, isLoading: tsLoading } =
+    useAnomalyTimeseries(timeseriesParams);
 
   const runMutation = useRunAnomalyMutation();
   const predictionMutation = useRunPredictionMutation();
@@ -232,7 +258,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
         </CardHeader>
         <CardContent className="pt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-6 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">{t("region")}</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              {t("region")}
+            </label>
             <select
               value={selectedRegionId}
               disabled={regionsLoading}
@@ -250,7 +278,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">{t("district")}</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              {t("district")}
+            </label>
             <select
               value={selectedDistrictName}
               onChange={(e) => setSelectedDistrictName(e.target.value)}
@@ -264,7 +294,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">{t("disease")}</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">
+              {t("disease")}
+            </label>
             <select
               value={selectedDiseaseName}
               onChange={(e) => setSelectedDiseaseName(e.target.value)}
@@ -302,20 +334,32 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
             <Button
               type="button"
               onClick={handleRun}
-              disabled={runMutation.isPending || !selectedDistrictName || !selectedDiseaseName}
+              disabled={
+                runMutation.isPending ||
+                !selectedDistrictName ||
+                !selectedDiseaseName
+              }
               className="primary-gradient text-white rounded-xl font-bold shadow-lg shadow-teal-900/10"
             >
-              {runMutation.isPending ? t("scanningDatabases") : t("runAnalysis")}
+              {runMutation.isPending
+                ? t("scanningDatabases")
+                : t("runAnalysis")}
             </Button>
           </div>
           <div className="flex flex-col gap-2 lg:col-span-6 xl:col-span-1">
             <Button
               type="button"
               onClick={handlePredictionRun}
-              disabled={predictionMutation.isPending || !selectedDistrictName || !selectedDiseaseName}
+              disabled={
+                predictionMutation.isPending ||
+                !selectedDistrictName ||
+                !selectedDiseaseName
+              }
               className="primary-gradient text-white rounded-xl font-bold shadow-lg shadow-teal-900/10"
             >
-              {predictionMutation.isPending ? t("scanningDatabases") : t("runPrediction")}
+              {predictionMutation.isPending
+                ? t("scanningDatabases")
+                : t("runPrediction")}
             </Button>
             <p className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
               {t("predictionHint")}
@@ -346,37 +390,66 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
                         {runResult.mortalitySignal
                           ? `${t("mortalitySpikePlainMessage")} ${runResult.currentDeaths} ${t("deaths").toLowerCase()}; ${t("mortalityRate")} ${(runResult.mortalityRate * 100).toFixed(1)}%.`
                           : runResult.classification === "ANOMALY"
-                          ? `${t("spikePlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}. ${t("about")} ${spikeDifference} ${t("casesHigherThanUsual")}.`
-                          : `${t("normalPlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}.`}
+                            ? `${t("spikePlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}. ${t("about")} ${spikeDifference} ${t("casesHigherThanUsual")}.`
+                            : `${t("normalPlainMessage")} ${t("latestReportsShow")} ${runResult.currentCases} ${t("cases")}; ${t("usualRecentLevel")} ${runResult.historicalMean.toFixed(0)}.`}
                       </p>
                     </div>
-                    <Badge variant={runResult.classification === "ANOMALY" ? "destructive" : "secondary"} className="text-xs font-black">
-                      {runResult.classification === "ANOMALY" ? t("needsReview") : t("normal")}
+                    <Badge
+                      variant={
+                        runResult.classification === "ANOMALY"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="text-xs font-black"
+                    >
+                      {runResult.classification === "ANOMALY"
+                        ? t("needsReview")
+                        : t("normal")}
                     </Badge>
                   </div>
                   <div className="mt-5 grid gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("currentCases")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.currentCases}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("currentCases")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {runResult.currentCases}
+                      </p>
                     </div>
-                    <div className={cn(
-                      "rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm",
-                      runResult.mortalitySignal && "ring-2 ring-red-300 dark:ring-red-800",
-                    )}>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("deaths")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.currentDeaths}</p>
+                    <div
+                      className={cn(
+                        "rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm",
+                        runResult.mortalitySignal &&
+                          "ring-2 ring-red-300 dark:ring-red-800",
+                      )}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("deaths")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {runResult.currentDeaths}
+                      </p>
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("usualRecentLevel")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.historicalMean.toFixed(1)}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("usualRecentLevel")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {runResult.historicalMean.toFixed(1)}
+                      </p>
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("dataPoints")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{runResult.sampleSize}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("dataPoints")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {runResult.sampleSize}
+                      </p>
                     </div>
                   </div>
                   <p className="mt-3 text-[11px] text-slate-400">
-                    {t("technicalDetails")}: {t("zScoreShort")} {runResult.zScore ?? "—"}, σ={runResult.stdDev.toFixed(2)}
+                    {t("technicalDetails")}: {t("zScoreShort")}{" "}
+                    {runResult.zScore ?? "—"}, σ={runResult.stdDev.toFixed(2)}
                   </p>
                   {runResult.signalId && (
                     <p className="mt-2 text-xs text-teal-700 dark:text-teal-400">
@@ -401,30 +474,70 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
                       </p>
                       <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
                         {predictionResult.classification === "ANOMALY"
-                          ? `${t("predictionPlainMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}, ${t("butCurrentReportsShow")} ${predictionResult.currentCases}. ${t("about")} ${Math.max(0, predictionDifference)} ${t("casesAboveExpected")}.`
-                          : `${t("predictionNormalMessage")} ${t("expectedAbout")} ${predictionResult.forecastNext.toFixed(0)} ${t("cases")}; ${t("currentReportsShow")} ${predictionResult.currentCases}.`}
+                          ? t("predictionSummaryAnomaly", {
+                              forecast: predictionResult.forecastNext.toFixed(0),
+                              current: predictionResult.currentCases,
+                              diff: Math.max(0, predictionDifference),
+                              days: lookbackDays,
+                            })
+                          : t("predictionSummaryNormal", {
+                              forecast: predictionResult.forecastNext.toFixed(0),
+                              current: predictionResult.currentCases,
+                              days: lookbackDays,
+                            })}
                       </p>
+                      {predictionResult.classification === "ANOMALY" ? (
+                        <p className="mt-2 text-xs font-semibold text-orange-900 dark:text-orange-100">
+                          {t("predictionInactionAnomalyShort")}
+                        </p>
+                      ) : null}
                     </div>
-                    <Badge variant={predictionResult.classification === "ANOMALY" ? "destructive" : "secondary"} className="text-xs font-black">
-                      {predictionResult.classification === "ANOMALY" ? t("watchClosely") : t("withinExpectedRange")}
+                    <Badge
+                      variant={
+                        predictionResult.classification === "ANOMALY"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="text-xs font-black"
+                    >
+                      {predictionResult.classification === "ANOMALY"
+                        ? t("watchClosely")
+                        : t("withinExpectedRange")}
                     </Badge>
                   </div>
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("currentCases")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.currentCases}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("currentCases")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {predictionResult.currentCases}
+                      </p>
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("usualOrExpectedLevel")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.forecastNext.toFixed(1)}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("forecastNext")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {predictionResult.forecastNext.toFixed(1)}
+                      </p>
+                      <p className="mt-1.5 text-[10px] leading-snug font-semibold text-slate-500 dark:text-slate-400">
+                        {t("predictionTargetPeriodShort")}
+                      </p>
                     </div>
                     <div className="rounded-2xl bg-white/80 dark:bg-slate-900/60 p-3 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t("dataPoints")}</p>
-                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{predictionResult.sampleSize}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        {t("dataPoints")}
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">
+                        {predictionResult.sampleSize}
+                      </p>
                     </div>
                   </div>
                   <p className="mt-3 text-[11px] text-slate-400">
-                    {t("technicalDetails")}: {t("zScoreShort")} {predictionResult.zScore ?? "—"}, σ={predictionResult.residualStd.toFixed(2)}
+                    {t("technicalDetails")}: {t("zScoreShort")}{" "}
+                    {predictionResult.zScore ?? "—"}, σ=
+                    {predictionResult.residualStd.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -463,7 +576,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
           <select
             value={classificationFilter}
             onChange={(e) => {
-              setClassificationFilter(e.target.value as typeof classificationFilter);
+              setClassificationFilter(
+                e.target.value as typeof classificationFilter,
+              );
               setPage(1);
             }}
             className="rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold bg-white dark:bg-slate-900"
@@ -472,7 +587,12 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
             <option value="ANOMALY">ANOMALY</option>
             <option value="NORMAL">NORMAL</option>
           </select>
-          <Button variant="outline" size="sm" onClick={handleExportAnomalies} className="rounded-xl font-bold">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportAnomalies}
+            className="rounded-xl font-bold"
+          >
             <ArrowRight className="w-4 h-4 mr-1 -rotate-90" />
             {t("exportAnomalies")}
           </Button>
@@ -490,7 +610,9 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
           </CardHeader>
           <CardContent className="h-[420px]">
             {!selectedDistrictName || !selectedDiseaseName ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">{t("selectDistrictDisease")}</div>
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                {t("selectDistrictDisease")}
+              </div>
             ) : tsLoading ? (
               <div className="h-full flex items-center justify-center">
                 <div className="h-10 w-10 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
@@ -502,7 +624,10 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 8, right: 24, bottom: 8, left: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
@@ -548,11 +673,23 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
                     dataKey="cases"
                     stroke="transparent"
                     strokeWidth={0}
-                    dot={(props: { cx?: number; cy?: number; payload?: { isAnomaly?: boolean } }) => {
+                    dot={(props: {
+                      cx?: number;
+                      cy?: number;
+                      payload?: { isAnomaly?: boolean };
+                    }) => {
                       const { cx, cy, payload } = props;
-                      if (!payload?.isAnomaly || cx == null || cy == null) return <g />;
+                      if (!payload?.isAnomaly || cx == null || cy == null)
+                        return <g />;
                       return (
-                        <circle cx={cx} cy={cy} r={7} fill="#dc2626" stroke="#fff" strokeWidth={2} />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={7}
+                          fill="#dc2626"
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
                       );
                     }}
                     legendType="none"
@@ -614,23 +751,34 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {anomaliesLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-20 text-center text-slate-400">
+                      <td
+                        colSpan={8}
+                        className="py-20 text-center text-slate-400"
+                      >
                         {t("loadingAnomalies")}
                       </td>
                     </tr>
                   ) : !(anomaliesPage?.data ?? []).length ? (
                     <tr>
-                      <td colSpan={8} className="py-20 text-center text-slate-400">
+                      <td
+                        colSpan={8}
+                        className="py-20 text-center text-slate-400"
+                      >
                         {t("noAnomalyRecords")}
                       </td>
                     </tr>
                   ) : (
                     (anomaliesPage?.data ?? []).map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <tr
+                        key={row.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                      >
                         <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
                           {new Date(row.createdAt).toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">{row.district}</td>
+                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-100">
+                          {row.district}
+                        </td>
                         <td className="px-6 py-4">{row.diseaseType}</td>
                         <td className="px-6 py-4">{row.currentCases}</td>
                         <td className="px-6 py-4">{row.historicalMean}</td>
@@ -649,13 +797,19 @@ export function AnomalyAnalysis({ geoStats, geoLoading, t }: AnomalyAnalysisProp
                         </td>
                         <td className="px-6 py-4">
                           <Badge
-                            variant={row.classification === "ANOMALY" ? "destructive" : "secondary"}
+                            variant={
+                              row.classification === "ANOMALY"
+                                ? "destructive"
+                                : "secondary"
+                            }
                             className="text-[10px]"
                           >
                             {row.classification}
                           </Badge>
                           {row.manual && (
-                            <span className="ml-1 text-[9px] text-slate-400">({t("manualRun")})</span>
+                            <span className="ml-1 text-[9px] text-slate-400">
+                              ({t("manualRun")})
+                            </span>
                           )}
                         </td>
                       </tr>

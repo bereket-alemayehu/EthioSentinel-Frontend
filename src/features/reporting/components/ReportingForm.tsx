@@ -74,7 +74,6 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
                             max={today}
                             onChange={e => setForm({...form, date: e.target.value})}
                             required
-                            max={new Date().toISOString().split('T')[0]}
                             className="h-14 bg-light-700/40 dark:bg-white/5 border-slate-200 dark:border-white/10 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all font-black p-6 text-lg shadow-inner"
                         />
                     </div>

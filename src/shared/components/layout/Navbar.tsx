@@ -9,7 +9,7 @@ import {
   Settings,
   LogOut,
   User,
-  Activity
+  Shield
 } from "lucide-react"
 
 import { cn } from "@/shared/utils/cn"
@@ -56,10 +56,10 @@ export function Navbar() {
   
 
   const navItems = [
-    { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard, roles: ["citizen", "hew", "admin"] },
-    { name: t("citizenService"), href: "/citizen", icon: Activity, roles: ["citizen"] },
-    { name: t("healthWorker"), href: "/hew", icon: Search, roles: ["hew", "admin"] },
-    { name: t("adminPanel"), href: "/admin", icon: Settings, roles: ["admin"] },
+    { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard, roles: ["hew", "admin", "super_admin"] },
+    { name: t("healthWorker"), href: "/hew", icon: Search, roles: ["hew", "admin", "super_admin"] },
+    { name: t("adminPanel"), href: "/admin", icon: Settings, roles: ["admin", "super_admin"] },
+    { name: t("superAdminPanel"), href: "/super-admin", icon: Shield, roles: ["super_admin"] },
   ]
 
   const filteredItems = navItems.filter(item => user && item.roles.includes(user.role))
@@ -95,7 +95,7 @@ export function Navbar() {
           <Link
             to={
               user
-                ? user.role === "admin"
+                ? user.role === "admin" || user.role === "super_admin"
                   ? "/admin"
                   : user.role === "hew"
                     ? "/hew"
@@ -114,6 +114,28 @@ export function Navbar() {
             </span>
           </Link>
           <div className="h-8 w-px bg-border/50 mx-2 hidden md:block" />
+          {user && filteredItems.length > 0 ? (
+            <nav
+              className="hidden md:flex items-center gap-0.5 max-w-[min(46vw,640px)] flex-wrap"
+              aria-label="Main"
+            >
+              {filteredItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-colors",
+                    location.pathname === item.href
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate max-w-[9rem]">{item.name}</span>
+                </Link>
+              ))}
+            </nav>
+          ) : null}
         </div>
 
         {/* Right: Search, Notifications, Theme, User */}
@@ -265,6 +287,15 @@ export function Navbar() {
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
+                  {user?.role === "super_admin" ? (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/super-admin")}
+                      className="cursor-pointer"
+                    >
+                      <Shield className="mr-2 h-4 w-4" />
+                      <span>{t("superAdminPanel")}</span>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuGroup>
                     <DropdownMenuItem 
                       onClick={() => navigate("/profile")}
