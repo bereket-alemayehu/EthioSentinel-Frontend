@@ -6,6 +6,8 @@ import {
   getStoredUser,
   setStoredUser,
   setStoredRole,
+  saveOfflineCredentials,
+  verifyOfflineCredentials,
 } from "@/features/auth/api/auth";
 import type { User, AuthContextType } from "@/features/auth/types";
 import type { UserRole } from "@/shared/types";
@@ -14,10 +16,11 @@ import { toast } from "sonner";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getStoredUser);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync role on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     const cached = getStoredUser();
@@ -29,14 +32,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     async function initAuth() {
+      if (!navigator.onLine) {
+        setIsLoading(false);
+        return;
+      }
       try {
         const userData = await getMeApi();
         setUser(userData);
         setStoredUser(userData);
       } catch (err) {
-        console.log("Network auth check failed, relying on cache if available");
-        // We don't wipe the user here because we initialized it from getStoredUser()
-        // unless we get a specific 401/403 but the getMeApi handles that.
+        console.log("[Auth] Session restoration failed (likely offline or expired)");
       } finally {
         setIsLoading(false);
       }
@@ -44,50 +49,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-
-
   const login = async (email: string, password: string, recaptchaToken: string) => {
     setIsLoading(true);
     setError(null);
 
-    // ── Handle Offline Login ───────────────────────────────────────────────
-    if (!navigator.onLine) {
+    const tryOfflineLogin = async (reason: string) => {
+      console.log(`[Auth] Attempting offline fallback: ${reason}`);
       try {
-        const { verifyOfflineCredentials } = await import("@/features/auth/api/auth");
         const offlineUser = await verifyOfflineCredentials(email, password);
         
         if (offlineUser) {
-          const { setStoredRole } = await import("@/features/auth/api/auth");
-          setUser(offlineUser);
+          console.log(`[Auth] Offline login success for ${offlineUser.username}`);
+          
+          // 1. Update Persistent Storage
           setStoredUser(offlineUser);
           if (offlineUser.role) setStoredRole(offlineUser.role);
           
+          // 2. Update React State
+          setUser(offlineUser);
           setIsLoading(false);
+          
           toast.info("Offline Login Successful", {
-            description: "You are logged in using cached credentials."
+            description: `Welcome back, ${offlineUser.username}. You are operating in offline mode.`
           });
-          return;
-        } else {
-          throw new Error("Invalid credentials for offline login. Please log in once while online.");
+          return true;
         }
-      } catch (err: any) {
-        setError(err.message);
-        setIsLoading(false);
-        throw err;
+      } catch (e) {
+        console.error("[Auth] Offline verify error:", e);
       }
+      return false;
+    };
+
+    // ── 1. If explicitly offline, go straight to cache ──────────────────────
+    if (!navigator.onLine) {
+      const success = await tryOfflineLogin("Browser reports offline");
+      if (success) return;
+      const msg = "No internet connection and no cached credentials found for this account.";
+      setError(msg);
+      setIsLoading(false);
+      throw new Error(msg);
     }
 
-    // ── Handle Online Login ────────────────────────────────────────────────
+    // ── 2. Try Online Login ────────────────────────────────────────────────
     try {
       const userData = await loginApi(email, password, recaptchaToken);
-      setUser(userData);
-      setStoredUser(userData);
       
       // Cache credentials for future offline use
-      const { saveOfflineCredentials } = await import("@/features/auth/api/auth");
       await saveOfflineCredentials(userData, password);
+
+      // Finalize state
+      setStoredUser(userData);
+      if (userData.role) setStoredRole(userData.role);
+      setUser(userData);
     } catch (err: any) {
-      const message = err.message || "Failed to sign in. Please check your credentials.";
+      // ── 3. Fallback to offline if network is unreachable ─────────────────
+      const isNetworkError = !err.response || err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message === 'Network Error';
+      
+      if (isNetworkError) {
+        const success = await tryOfflineLogin("Network request failed");
+        if (success) return;
+        const msg = "Network error and no offline credentials found.";
+        setError(msg);
+        throw new Error(msg);
+      }
+
+      const message = err.response?.data?.message || err.message || "Failed to sign in. Please check your credentials.";
       setError(message);
       throw new Error(message);
     } finally {

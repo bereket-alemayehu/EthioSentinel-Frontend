@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, MapPin, ArrowRight, ShieldCheck, HeartPulse, Smartphone } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, HeartPulse, Smartphone } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { registerApi, verifyOtpApi, setStoredUser, resendOtpApi } from '@/features/auth/api/auth';
 import ReCAPTCHA from 'react-google-recaptcha';
+import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
 import { getRecaptchaSiteKey } from '@/shared/lib/recaptcha';
 
 export default function RegisterPage() {
@@ -19,9 +20,22 @@ export default function RegisterPage() {
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
 
+  const isOnline = useOnlineStatus();
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(
+    !navigator.onLine ? 'OFFLINE' : null
+  );
   const recaptchaSiteKey = getRecaptchaSiteKey();
+
+  // Sync token when connectivity changes
+  useEffect(() => {
+    if (!isOnline) {
+      recaptchaRef.current?.reset();
+      setRecaptchaToken('OFFLINE');
+    } else {
+      setRecaptchaToken(null);
+    }
+  }, [isOnline]);
 
   React.useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -55,9 +69,7 @@ export default function RegisterPage() {
       });
       setUserId(user.id);
       setStep('otp');
-      toast.success('Verification code sent to your phone');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('registerFailed'));
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
     } finally {
@@ -72,11 +84,10 @@ export default function RegisterPage() {
     try {
       const user = await verifyOtpApi(userId, otpCode);
       setStoredUser(user);
-      toast.success(t('registerSuccess'));
       // Hard redirect to clear state and trigger role-based routing
       window.location.href = '/citizen';
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Invalid verification code');
+      // Error handled by interceptor
     } finally {
       setLoading(false);
     }
@@ -114,8 +125,13 @@ export default function RegisterPage() {
             <div className="inline-flex py-3 px-3 bg-white/20 rounded-2xl mb-4">
               <ShieldCheck className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">{step === 'register' ? t('registerHeading') : 'Verify Phone'}</h1>
-            <p className="text-white/70 text-sm">{step === 'register' ? t('registerSubtitle') : 'Enter the 6-digit code sent to ' + form.phoneNumber}</p>
+            <h1 className="text-2xl font-bold text-white mb-2">{step === 'register' ? t('registerHeading') : 'Verify Account'}</h1>
+            <p className="text-white/70 text-sm">
+              {step === 'register' 
+                ? t('registerSubtitle') 
+                : `Enter the 6-digit code sent to ${form.email || form.phoneNumber}`
+              }
+            </p>
           </div>
 
           <AnimatePresence mode="wait">
@@ -184,24 +200,28 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center mt-2 gap-2">
-                  {recaptchaSiteKey ? (
-                    <ReCAPTCHA
-                      ref={recaptchaRef}
-                      sitekey={recaptchaSiteKey}
-                      onChange={(token) => setRecaptchaToken(token)}
-                      theme="light"
-                    />
-                  ) : (
-                    <p className="text-center text-xs text-amber-100/95 px-2">
-                      reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
-                    </p>
-                  )}
-                </div>
+                {isOnline && (
+                  <div className="flex flex-col items-center justify-center mt-2 gap-2">
+                    {recaptchaSiteKey ? (
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={recaptchaSiteKey}
+                        onChange={(token) => setRecaptchaToken(token)}
+                        onExpired={() => setRecaptchaToken(null)}
+                        onErrored={() => setRecaptchaToken('OFFLINE')} // Google unreachable → bypass
+                        theme="light"
+                      />
+                    ) : (
+                      <p className="text-center text-xs text-amber-100/95 px-2">
+                        reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <Button
                   type="submit"
-                  disabled={loading || !recaptchaSiteKey || !recaptchaToken}
+                  disabled={loading || !recaptchaToken}
                   className="w-full h-12 bg-white text-[#0f6b7c] hover:bg-white/90 font-bold rounded-xl mt-2"
                 >
                   {loading ? t('authenticating') : (
