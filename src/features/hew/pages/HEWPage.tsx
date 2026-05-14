@@ -49,6 +49,7 @@ export default function HEWPage() {
   const deleteServerMutation = useDeleteReportMutation();
   const { data: diseaseList = [] } = useDiseases();
   const reportsContainerRef = useRef<HTMLDivElement>(null);
+  const todayDate = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
 
   const diseaseOptions = useMemo(() => 
     diseaseList.map((d: any) => ({
@@ -199,8 +200,7 @@ export default function HEWPage() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    if (form.date > today) {
+    if (form.date && form.date > todayDate) {
       toast.error(t("futureDateError") || "Report date cannot be in the future");
       return;
     }
@@ -253,8 +253,7 @@ export default function HEWPage() {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    if (editForm.date > today) {
+    if (editForm.date && editForm.date > todayDate) {
       toast.error(t("futureDateError") || "Report date cannot be in the future");
       return;
     }

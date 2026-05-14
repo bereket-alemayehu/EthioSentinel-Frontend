@@ -5,6 +5,7 @@ import {
   getAnomalies,
   getAnomalyTimeseries,
   runAnomaly,
+  runPrediction,
   type AnomalyClassification,
 } from '../api';
 
@@ -88,5 +89,11 @@ export const useRunAnomalyMutation = () => {
         });
       }
     },
+  });
+};
+
+export const useRunPredictionMutation = () => {
+  return useMutation({
+    mutationFn: runPrediction,
   });
 };

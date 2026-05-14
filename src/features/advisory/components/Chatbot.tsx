@@ -7,7 +7,7 @@ import { cn } from '@/shared/utils/cn';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/app/providers/auth/AuthProvider';
-import { getChatHistoryApi, sendChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
+import { getChatHistoryApi, sendChatMessageApi, sendPublicChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 import { useGrammarCheck } from 'react-grammar-kit';
 
 // Chat messages interface
@@ -17,6 +17,9 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
 }
+
+const GUEST_CHAT_LIMIT = 3;
+const GUEST_CHAT_COUNT_KEY = 'ethio-guest-chat-count';
 
 export function Chatbot() {
   const { i18n, t } = useTranslation();
@@ -116,6 +119,10 @@ export function Chatbot() {
     highlightedText,
   } = useGrammarCheck('');
   const [isLoading, setIsLoading] = useState(false);
+  const [guestCount, setGuestCount] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    return Number(window.localStorage.getItem(GUEST_CHAT_COUNT_KEY) || '0');
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -132,18 +139,6 @@ export function Chatbot() {
     e?.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    if (!user) {
-      setMessages((prev: Message[]) => [...prev, {
-        id: (Date.now() + 1).toString(),
-        text: i18n.language === 'am'
-          ? 'እባክዎ ቻት ለመጠቀም መጀመሪያ ይግቡ።'
-          : 'Please log in to use personalized chat support.',
-        sender: 'bot',
-        timestamp: new Date(),
-      }]);
-      return;
-    }
-
     const userMessage: Message = {
       id: Date.now().toString(),
       text: input,
@@ -157,7 +152,27 @@ export function Chatbot() {
 
     try {
       const language = i18n.language === 'am' ? 'AMHARIC' : 'ENGLISH';
-      const reply = await sendChatMessageApi(input, language);
+      let reply;
+      if (user) {
+        reply = await sendChatMessageApi(input, language);
+      } else {
+        if (guestCount >= GUEST_CHAT_LIMIT) {
+          const signupMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: i18n.language === 'am'
+              ? 'ነፃ የእንግዳ ጥያቄዎችዎን ጨርሰዋል። ያለገደብ የጤና ምክር ለማግኘት እና ታሪክዎን ለማስቀመጥ እባክዎ ይመዝገቡ።'
+              : 'You have used your free guest questions. Please sign up to continue with unlimited advisory chat and saved history.',
+            sender: 'bot',
+            timestamp: new Date(),
+          };
+          setMessages((prev: Message[]) => [...prev, signupMessage]);
+          return;
+        }
+        reply = await sendPublicChatMessageApi(input, language);
+        const nextCount = guestCount + 1;
+        setGuestCount(nextCount);
+        window.localStorage.setItem(GUEST_CHAT_COUNT_KEY, String(nextCount));
+      }
 
       const botMessage: Message = {
         id: reply.id,
@@ -258,6 +273,14 @@ export function Chatbot() {
               </div>
             </div>
 
+            {!user && (
+              <div className="border-b border-border bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                {i18n.language === 'am'
+                  ? `እንግዳ መዳረሻ፡ ${Math.max(0, GUEST_CHAT_LIMIT - guestCount)} ነፃ ጥያቄዎች ቀርተዋል። ተጨማሪ ለማግኘት ይመዝገቡ።`
+                  : `Guest access: ${Math.max(0, GUEST_CHAT_LIMIT - guestCount)} free questions left. Sign up for unlimited advisory chat.`}
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/10 custom-scrollbar">
               {historyLoading && (
@@ -347,13 +370,13 @@ export function Chatbot() {
                 placeholder="Type your message..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={historyLoading}
+                disabled={historyLoading || (!user && guestCount >= GUEST_CHAT_LIMIT)}
                 className="bg-muted/50 border-border/50 focus-visible:ring-primary h-11 rounded-xl"
               />
               <Button 
                 type="submit" 
                 size="icon" 
-                disabled={!input.trim() || isLoading || historyLoading}
+                disabled={!input.trim() || isLoading || historyLoading || (!user && guestCount >= GUEST_CHAT_LIMIT)}
                 className="h-11 w-11 primary-gradient transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/25 rounded-xl shrink-0"
               >
                 <Send className="w-4 h-4 ml-0.5" />

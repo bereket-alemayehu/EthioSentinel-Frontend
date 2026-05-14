@@ -24,6 +24,8 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
   isOnline,
   reportMutationPending
 }) => {
+  const today = new Date().toLocaleDateString("en-CA");
+
   return (
     <motion.div 
         initial={{ opacity: 0, scale: 0.98 }}
@@ -69,6 +71,7 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
                         <Input 
                             type="date"
                             value={form.date}
+                            max={today}
                             onChange={e => setForm({...form, date: e.target.value})}
                             required
                             max={new Date().toISOString().split('T')[0]}

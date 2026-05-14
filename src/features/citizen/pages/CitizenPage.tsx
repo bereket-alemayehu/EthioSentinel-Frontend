@@ -1,48 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { useRegions, useAdvisories } from "@/features/advisory/hooks/useAdvisory";
 import { AdvisoryArticles } from "@/features/advisory/components/AdvisoryArticles";
 import { SymptomChecker } from "@/features/advisory/components/SymptomChecker";
+import { useEthiopiaRegionalStatus } from "../hooks/usePublicHealth";
 import type { District } from "@/features/advisory/types";
+import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
-import L from "leaflet";
 import { useTranslation } from "react-i18next";
 
-// Fix Leaflet icons in Vite
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
 
-// @ts-ignore
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
-
-const ETHIOPIA_CENTER: [number, number] = [9.145, 40.4897];
-
-function riskRank(level: RiskLevel): number {
-  if (level === "CRITICAL") return 4;
-  if (level === "HIGH") return 3;
-  if (level === "MODERATE") return 2;
-  return 1;
-}
-
-function riskColor(level: RiskLevel): string {
-  if (level === "CRITICAL") return "#dc2626";
-  if (level === "HIGH") return "#ea580c";
-  if (level === "MODERATE") return "#d97706";
-  return "#16a34a";
-}
-
-function parseCoord(value: string | number | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
-  const num = Number(value);
-  if (Number.isNaN(num)) return null;
-  return num;
-}
+type DetectedArea = {
+  regionId: number;
+  region: string;
+  districtId: number;
+  district: string;
+  distanceKm: number;
+};
 
 const RISK_CONFIG: Record<
   RiskLevel,
@@ -94,13 +68,75 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
+function parseCoordinate(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function distanceInKm(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+): number {
+  const earthRadiusKm = 6371;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const latDelta = toRadians(to.latitude - from.latitude);
+  const lngDelta = toRadians(to.longitude - from.longitude);
+  const lat1 = toRadians(from.latitude);
+  const lat2 = toRadians(to.latitude);
+
+  const a =
+    Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function findNearestDistrict(
+  latitude: number,
+  longitude: number,
+  statuses: RegionHealthStatus[],
+): DetectedArea | null {
+  let nearest: DetectedArea | null = null;
+
+  for (const region of statuses) {
+    for (const district of region.districts) {
+      const districtLat = parseCoordinate(district.latitude);
+      const districtLng = parseCoordinate(district.longitude);
+      if (districtLat === null || districtLng === null) continue;
+
+      const distanceKm = distanceInKm(
+        { latitude, longitude },
+        { latitude: districtLat, longitude: districtLng },
+      );
+
+      if (!nearest || distanceKm < nearest.distanceKm) {
+        nearest = {
+          regionId: region.regionId,
+          region: region.region,
+          districtId: district.districtId,
+          district: district.district,
+          distanceKm,
+        };
+      }
+    }
+  }
+
+  return nearest;
+}
+
 export default function CitizenPage() {
   const { t } = useTranslation();
   const { data: regions = [], isLoading: regionsLoading, error: regionsError } = useRegions();
   const { data: advisories = [], isLoading: advisoriesLoading, error: advisoriesError } = useAdvisories();
+  const { data: regionStatus, isLoading: regionStatusLoading } = useEthiopiaRegionalStatus(30);
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("");
+  const [expandedRegionId, setExpandedRegionId] = useState<number | null>(null);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+  const [detectedArea, setDetectedArea] = useState<DetectedArea | null>(null);
+  const [showAllRegions, setShowAllRegions] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "advisories" | "symptom">(
     "map"
   );
@@ -115,66 +151,48 @@ export default function CitizenPage() {
     }
   }, [regions, selectedRegionId]);
 
+  useEffect(() => {
+    if (!regionStatus?.data.length || locationStatus !== "idle") return;
+
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("unsupported");
+      return;
+    }
+
+    setLocationStatus("detecting");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const match = findNearestDistrict(
+          position.coords.latitude,
+          position.coords.longitude,
+          regionStatus.data,
+        );
+
+        if (!match) {
+          setLocationStatus("unavailable");
+          return;
+        }
+
+        setDetectedArea(match);
+        setExpandedRegionId(match.regionId);
+        setSelectedRegionId(String(match.regionId));
+        setSelectedDistrictId(String(match.districtId));
+        setShowAllRegions(false);
+        setLocationStatus("detected");
+      },
+      (geoError) => {
+        setLocationStatus(geoError.code === geoError.PERMISSION_DENIED ? "denied" : "unavailable");
+      },
+      { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 },
+    );
+  }, [locationStatus, regionStatus?.data]);
+
   const selectedRegion = useMemo(
     () => regions.find((item) => String(item.id) === selectedRegionId) ?? null,
     [regions, selectedRegionId]
   );
 
   const districtOptions = selectedRegion?.districts ?? [];
-
-  const districtMapData = useMemo(() => {
-    const rows: Array<{
-      districtId: number;
-      districtName: string;
-      lat: number;
-      lng: number;
-      riskLevel: RiskLevel;
-      diseaseName: string;
-      advisoryTitle: string;
-      advisoryContent: string;
-    }> = [];
-    for (const region of regions) {
-      if (selectedRegionId && String(region.id) !== selectedRegionId) continue;
-      for (const district of region.districts ?? []) {
-        if (selectedDistrictId && String(district.id) !== selectedDistrictId)
-          continue;
-        const districtAdvisories = advisories.filter(
-          (advisory) => advisory.districtId === district.id
-        );
-        if (districtAdvisories.length === 0) continue;
-        let highest = districtAdvisories[0];
-        for (const item of districtAdvisories) {
-          if (riskRank(item.riskLevel) > riskRank(highest.riskLevel))
-            highest = item;
-        }
-        const lat = parseCoord(district.latitude);
-        const lng = parseCoord(district.longitude);
-        if (lat === null || lng === null) continue;
-        rows.push({
-          districtId: district.id,
-          districtName: district.name,
-          lat,
-          lng,
-          riskLevel: highest.riskLevel,
-          diseaseName: highest.disease?.name ?? t("unknown"),
-          advisoryTitle: highest.title,
-          advisoryContent: highest.content,
-        });
-      }
-    }
-    return rows;
-  }, [regions, advisories, selectedRegionId, selectedDistrictId]);
-
-  const mapCenter = useMemo<[number, number]>(() => {
-    if (districtMapData.length === 0) return ETHIOPIA_CENTER;
-    const latAvg =
-      districtMapData.reduce((sum, row) => sum + row.lat, 0) /
-      districtMapData.length;
-    const lngAvg =
-      districtMapData.reduce((sum, row) => sum + row.lng, 0) /
-      districtMapData.length;
-    return [latAvg, lngAvg];
-  }, [districtMapData]);
 
   const filteredAdvisories = useMemo(() => {
     if (!selectedRegionId) return advisories;
@@ -196,6 +214,60 @@ export default function CitizenPage() {
   const highCount = advisories.filter((a) => a.riskLevel === "HIGH").length;
   const totalRegions = regions.length;
   const totalAdvisories = advisories.length;
+  const regionalTotals = regionStatus?.totals;
+  const visibleRegionStatuses = useMemo(() => {
+    const statuses = regionStatus?.data ?? [];
+    if (!detectedArea || showAllRegions) return statuses;
+    return statuses.filter((region) => region.regionId === detectedArea.regionId);
+  }, [detectedArea, regionStatus?.data, showAllRegions]);
+  const focusedRegionStatus = detectedArea && !showAllRegions ? visibleRegionStatuses[0] : null;
+  const dashboardTotals = focusedRegionStatus
+    ? {
+        cases: focusedRegionStatus.totalCases,
+        deaths: focusedRegionStatus.totalDeaths,
+        reports: focusedRegionStatus.reportCount,
+        spikes: focusedRegionStatus.spikeCount,
+      }
+    : regionalTotals;
+
+  const handleDetectLocation = () => {
+    if (!regionStatus?.data.length) {
+      setLocationStatus("unavailable");
+      return;
+    }
+
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("unsupported");
+      return;
+    }
+
+    setLocationStatus("detecting");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const match = findNearestDistrict(
+          position.coords.latitude,
+          position.coords.longitude,
+          regionStatus.data,
+        );
+
+        if (!match) {
+          setLocationStatus("unavailable");
+          return;
+        }
+
+        setDetectedArea(match);
+        setExpandedRegionId(match.regionId);
+        setSelectedRegionId(String(match.regionId));
+        setSelectedDistrictId(String(match.districtId));
+        setShowAllRegions(false);
+        setLocationStatus("detected");
+      },
+      (geoError) => {
+        setLocationStatus(geoError.code === geoError.PERMISSION_DENIED ? "denied" : "unavailable");
+      },
+      { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 },
+    );
+  };
 
   return (
     <div className="w-full min-h-screen">
@@ -376,109 +448,229 @@ export default function CitizenPage() {
           </div>
         )}
 
-        {/* ── TAB: Risk Map ──────────────────────────────────────── */}
+        {/* ── TAB: Region Cards ──────────────────────────────────────── */}
         {!loading && activeTab === "map" && (
-          <div className="space-y-5">
-            <div className="overflow-hidden rounded-3xl border border-border shadow-md">
-              {/* Map Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border bg-card px-6 py-4">
+          <div className="space-y-6">
+            <div className="overflow-hidden rounded-[2rem] border border-[#0f6b7c]/20 bg-linear-to-br from-[#0f6b7c] via-[#17869a] to-[#2e8b57] p-6 text-white shadow-xl shadow-[#0f6b7c]/10">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-foreground">
-                    {t("districtRiskHeatmap")}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {error ? t("unableLoadDashboardData") : t("mapClickHint")}
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-white/65">
+                    {t("liveHealthMonitoring")}
                   </p>
-                </div>
-                {!error && (
-                  <div className="flex items-center gap-3 text-xs font-medium">
-                    {(["LOW", "MODERATE", "HIGH", "CRITICAL"] as RiskLevel[]).map(
-                      (level) => {
-                        const cfg = RISK_CONFIG[level];
-                        return (
-                          <div key={level} className="flex items-center gap-1.5">
-                            <span
-                              className={`h-3 w-3 rounded-full ${cfg.dot}`}
-                            />
-                            <span className="text-muted-foreground">
-                              {cfg.label}
-                            </span>
-                          </div>
-                        );
-                      }
+                  <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                    {focusedRegionStatus ? t("localAreaHealthStatus") : t("allEthiopianRegions")}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-white/80">
+                    {focusedRegionStatus && detectedArea
+                      ? t("showingDetectedRegion", {
+                          region: detectedArea.region,
+                          district: detectedArea.district,
+                        })
+                      : t("regionCardsHint")}
+                  </p>
+                  <p className="mt-2 max-w-2xl text-xs font-semibold uppercase tracking-wider text-white/60">
+                    {t("regionalDataSourceNote")}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white/80">
+                      {locationStatus === "detecting"
+                        ? t("detectingLocation")
+                        : locationStatus === "detected"
+                          ? t("locationDetected")
+                          : locationStatus === "denied"
+                            ? t("locationPermissionDenied")
+                            : locationStatus === "unsupported"
+                              ? t("locationUnsupported")
+                              : t("locationNotDetected")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      disabled={locationStatus === "detecting"}
+                      className="rounded-full bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#0f6b7c] shadow-sm transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {locationStatus === "detecting" ? t("detecting") : t("detectMyRegion")}
+                    </button>
+                    {detectedArea && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRegions((value) => !value)}
+                        className="rounded-full border border-white/25 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white transition hover:bg-white/10"
+                      >
+                        {showAllRegions ? t("showMyRegionOnly") : t("showAllRegions")}
+                      </button>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* Leaflet Map */}
-              <div className="h-[520px] w-full bg-slate-50 relative">
-                <MapContainer
-                  key={`${selectedRegionId}-${selectedDistrictId}-${districtMapData.length}-${error}`}
-                  center={mapCenter}
-                  zoom={selectedDistrictId ? 10 : 7}
-                  scrollWheelZoom
-                  className="h-full w-full outline-none"
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {!error && districtMapData.map((row) => (
-                    <CircleMarker
-                      key={row.districtId}
-                      center={[row.lat, row.lng]}
-                      radius={riskRank(row.riskLevel) >= 3 ? 16 : 11}
-                      pathOptions={{
-                        color: riskColor(row.riskLevel),
-                        fillColor: riskColor(row.riskLevel),
-                        fillOpacity: 0.65,
-                        weight: 2.5,
-                      }}
-                    >
-                      <Popup>
-                        <div className="space-y-2 min-w-[200px] p-1">
-                          <p className="font-bold text-base">
-                            {row.districtName}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <RiskBadge level={row.riskLevel} />
-                          </div>
-                          <p className="text-sm font-medium text-gray-700">
-                            🦠 {row.diseaseName}
-                          </p>
-                          <p className="text-sm font-semibold">
-                            {row.advisoryTitle}
-                          </p>
-                          <p className="text-xs text-gray-500 leading-relaxed">
-                            {row.advisoryContent.slice(0, 200)}
-                            {row.advisoryContent.length > 200 ? "…" : ""}
-                          </p>
-                        </div>
-                      </Popup>
-                    </CircleMarker>
-                  ))}
-                </MapContainer>
-                
-                {error && (
-                  <div className="absolute inset-0 z-1000 flex items-center justify-center pointer-events-none">
-                    <div className="bg-white/90 backdrop-blur-sm border border-border rounded-2xl px-6 py-4 shadow-xl text-center max-w-sm pointer-events-auto">
-                       <p className="text-sm font-bold text-red-600 mb-1">Data Connection Offline</p>
-                       <p className="text-xs text-muted-foreground">The map is functional, but regional risk markers could not be loaded from the server.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {!error && districtMapData.length === 0 && (
-                <div className="flex flex-col items-center justify-center gap-2 py-8 bg-card text-center">
-                  <span className="text-4xl opacity-40">📍</span>
-                  <p className="text-sm text-muted-foreground">
-                    {t("noDistrictRiskData")}
-                  </p>
                 </div>
-              )}
+
+                <div className="grid min-w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[560px]">
+                  {[
+                    { label: t("caseCount"), value: dashboardTotals?.cases ?? 0 },
+                    { label: t("deaths"), value: dashboardTotals?.deaths ?? 0 },
+                    { label: t("reports"), value: dashboardTotals?.reports ?? 0 },
+                    { label: t("spikes"), value: dashboardTotals?.spikes ?? 0 },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/65">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-2xl font-black tabular-nums">
+                        {item.value.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+
+            {regionStatusLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5, 6].map((item) => (
+                  <div key={item} className="h-64 animate-pulse rounded-3xl bg-muted" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {visibleRegionStatuses.map((region) => {
+                  const expanded = expandedRegionId === region.regionId;
+                  const cfg = RISK_CONFIG[region.riskLevel];
+                  return (
+                    <div
+                      key={region.regionId}
+                      className={`group overflow-hidden rounded-[2rem] border bg-card shadow-md transition-all ${
+                        expanded
+                          ? `border-[#0f6b7c]/50 shadow-2xl ${cfg.glow} md:col-span-2 xl:col-span-3`
+                          : `border-border hover:-translate-y-1 hover:border-[#0f6b7c]/35 hover:shadow-xl ${cfg.glow}`
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedRegionId(expanded ? null : region.regionId)}
+                        className="w-full text-left"
+                      >
+                        <div className={`h-2 w-full ${cfg.dot}`} />
+                        <div className="p-6">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-3xl font-black tracking-tight text-foreground">
+                                {region.region}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                                {region.districtCount} {t("districts")} • {region.reportCount.toLocaleString()} {t("reports")}
+                              </p>
+                            </div>
+                            <RiskBadge level={region.riskLevel} />
+                          </div>
+
+                          <div className="mt-6 rounded-3xl bg-linear-to-br from-[#0f6b7c]/10 to-[#2e8b57]/10 p-5">
+                            <p className="text-xs font-black uppercase tracking-widest text-[#0f6b7c]">
+                              {t("caseCount")}
+                            </p>
+                            <div className="mt-1 flex items-end justify-between gap-4">
+                              <p className="text-5xl font-black tracking-tight text-foreground tabular-nums">
+                                {region.totalCases.toLocaleString()}
+                              </p>
+                              <p className="rounded-full bg-white/70 px-3 py-1 text-xs font-black text-[#0f6b7c] dark:bg-background/70">
+                                {region.riskLevel}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-3 gap-3">
+                            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("deaths")}</p>
+                              <p className="mt-1 text-2xl font-black tabular-nums text-foreground">{region.totalDeaths.toLocaleString()}</p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("reports")}</p>
+                              <p className="mt-1 text-2xl font-black tabular-nums text-foreground">{region.reportCount.toLocaleString()}</p>
+                            </div>
+                            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("spikes")}</p>
+                              <p className="mt-1 text-2xl font-black tabular-nums text-foreground">{region.spikeCount.toLocaleString()}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-5">
+                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
+                              {t("diseaseDistribution")}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {region.topDiseases.length === 0 ? (
+                                <span className="rounded-full bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground">{t("noData")}</span>
+                              ) : (
+                                region.topDiseases.slice(0, 4).map((disease) => (
+                                  <span key={disease.diseaseType} className="rounded-full bg-[#0f6b7c]/10 px-3 py-1.5 text-sm font-black text-[#0f6b7c]">
+                                    {disease.diseaseType}: {disease.cases.toLocaleString()}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-6 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                            <span className="text-sm font-black text-[#0f6b7c]">
+                              {expanded ? t("hideDistrictDetails") : t("viewDistrictDetails")}
+                            </span>
+                            <span className={`text-xl transition-transform ${expanded ? "rotate-180" : ""}`}>
+                              ↓
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+
+                      {expanded && (
+                        <div className="border-t border-border bg-muted/20 px-6 pb-6">
+                          <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            {region.districts.map((district) => (
+                              <div key={district.districtId} className="rounded-3xl border border-border bg-background p-5 shadow-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-xl font-black text-foreground">{district.district}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {district.reportCount.toLocaleString()} {t("reports")}
+                                    </p>
+                                  </div>
+                                  <RiskBadge level={district.riskLevel} />
+                                </div>
+                                <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                                  <div className="rounded-2xl bg-muted/50 p-3">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground">{t("caseCount")}</p>
+                                    <p className="mt-1 text-lg font-black">{district.totalCases.toLocaleString()}</p>
+                                  </div>
+                                  <div className="rounded-2xl bg-muted/50 p-3">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground">{t("deaths")}</p>
+                                    <p className="mt-1 text-lg font-black">{district.totalDeaths.toLocaleString()}</p>
+                                  </div>
+                                  <div className="rounded-2xl bg-muted/50 p-3">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground">{t("spikes")}</p>
+                                    <p className="mt-1 text-lg font-black">{district.spikeCount.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                  {district.topDiseases.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground">{t("noData")}</span>
+                                  ) : (
+                                    district.topDiseases.map((disease) => (
+                                      <span key={disease.diseaseType} className="rounded-full bg-muted px-2 py-1 text-xs font-semibold">
+                                        {disease.diseaseType}: {disease.cases.toLocaleString()}
+                                      </span>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { Bell, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import type { AlertItem } from "@/features/admin/types";
 import { getSeverityLevel } from "@/features/admin/utils";
+import { formatDate } from "@/shared/utils/formatDate";
 
 interface AlertApprovalsProps {
   alerts: AlertItem[];
@@ -46,6 +47,7 @@ export function AlertApprovals({
               <tr className="text-left">
                 <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("severityColumn")}</th>
                 <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">🦠 {t("diseaseColumn")}</th>
+                <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("dateColumn")}</th>
                 <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("advisorySummary")}</th>
                 <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{t("statusColumn")}</th>
                 <th className="px-8 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">{t("actionsColumn")}</th>
@@ -54,7 +56,7 @@ export function AlertApprovals({
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-32 text-center">
+                  <td colSpan={6} className="py-32 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="h-10 w-10 border-3 border-teal-100 border-t-teal-600 rounded-full animate-spin" />
                       <span className="text-sm font-bold text-slate-400 tracking-wide">{t("loadingRecentAlerts")}</span>
@@ -63,7 +65,7 @@ export function AlertApprovals({
                 </tr>
               ) : alerts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-32 text-center px-8">
+                  <td colSpan={6} className="py-32 text-center px-8">
                     <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
                       <div className="w-20 h-20 rounded-full bg-emerald-50 dark:bg-emerald-950/20 flex items-center justify-center">
                         <CheckCircle2 className="w-10 h-10 text-emerald-500 dark:text-emerald-400/80" />
@@ -91,6 +93,11 @@ export function AlertApprovals({
                           <span className="font-bold text-slate-900 dark:text-slate-100 text-[15px]">{alert.disease || t("tableGlobalAdvisory")}</span>
                           <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-1 opacity-60">{t("refPrefix")}-{alert.id.toString().padStart(6, '0')}</span>
                         </div>
+                      </td>
+                      <td className="px-8 py-6 whitespace-nowrap">
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300 tabular-nums">
+                          {alert.createdAt ? formatDate(alert.createdAt) : "—"}
+                        </span>
                       </td>
                       <td className="px-8 py-6 max-w-md">
                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm line-clamp-3 font-medium">
