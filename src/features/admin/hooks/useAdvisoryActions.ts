@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAdvisoryDrafts, getApprovedAdvisories, updateAdvisoryStatus } from '../api';
+import {
+  getAdvisoryDrafts,
+  getApprovedAdvisories,
+  getAdvisoryById,
+  updateAdvisoryStatus,
+} from '../api';
 import { adminKeys } from './useAdmin';
+
+export const advisoryKeys = {
+  detail: (id: string) => [...adminKeys.all, 'advisory', id] as const,
+};
 
 export const useAdvisoryDrafts = () => {
   return useQuery({
@@ -16,15 +25,25 @@ export const useApprovedAdvisories = () => {
   });
 };
 
+export const useAdvisoryDetail = (id: string | undefined) => {
+  return useQuery({
+    queryKey: advisoryKeys.detail(id ?? ''),
+    queryFn: () => getAdvisoryById(id!),
+    enabled: Boolean(id),
+  });
+};
+
 export const useUpdateAdvisoryStatusMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (args: { id: string; action: 'approve' | 'reject' | 'withdraw' }) =>
       updateAdvisoryStatus(args.id, args.action),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'advisoryDrafts'] });
       void queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'approvedAdvisories'] });
-      // Also invalidate citizen advisories if they share the same cache key or if we want to be safe
+      void queryClient.invalidateQueries({
+        queryKey: advisoryKeys.detail(variables.id),
+      });
       void queryClient.invalidateQueries({ queryKey: ['advisory', 'list'] });
     },
   });

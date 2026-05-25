@@ -1,8 +1,18 @@
 import { api } from '@/shared/lib/axios';
-import type { AlertItem } from '../types';
+import type { AlertItem, AdminAdvisoryItem } from '../types';
 
 export const getAlerts = async (): Promise<AlertItem[]> => {
   const response = await api.get<{ data: AlertItem[] }>('/alerts');
+  return response.data.data;
+};
+
+export const getAlertById = async (id: string): Promise<AlertItem> => {
+  const response = await api.get<{ data: AlertItem }>(`/alerts/${id}`);
+  return response.data.data;
+};
+
+export const getAdvisoryById = async (id: string): Promise<AdminAdvisoryItem> => {
+  const response = await api.get<{ data: AdminAdvisoryItem }>(`/advisories/${id}`);
   return response.data.data;
 };
 
@@ -39,6 +49,8 @@ export interface GeoStat {
   reportCount: number;
   latitude: number | null;
   longitude: number | null;
+  /** When set, map uses API risk level (e.g. citizen district map). */
+  riskLevel?: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
 }
 
 export const getGeoStats = async (filters: {

@@ -17,6 +17,7 @@ export interface Advisory {
   id: number;
   title: string;
   content: string;
+  diseaseType?: string;
   riskLevel: RiskLevel;
   status: string;
   regionId: number;

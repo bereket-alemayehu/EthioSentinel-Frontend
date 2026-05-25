@@ -18,6 +18,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Badge } from "@/shared/components/ui/badge";
 import { Modal } from "@/shared/components/ui/Modal";
+import { PasswordVisibilityToggle } from "@/shared/components/ui/PasswordVisibilityToggle";
 import { cn } from "@/shared/utils/cn";
 import {
   LayoutDashboard,
@@ -103,8 +104,11 @@ function auditSummary(row: AuditLogRow): string {
   return [row.action.replace(/_/g, " "), actor, res].filter(Boolean).join(" · ");
 }
 
-function mergeRegionsForUser(userRegion: string, regions: RegionListItem[]): RegionListItem[] {
-  const trimmed = userRegion.trim();
+function mergeRegionsForUser(
+  userRegion: string | null | undefined,
+  regions: RegionListItem[],
+): RegionListItem[] {
+  const trimmed = (userRegion ?? "").trim();
   if (!trimmed) return regions;
   const names = new Set(regions.map((r) => r.name));
   if (!names.has(trimmed)) {
@@ -1083,17 +1087,29 @@ function LabeledInput({
   required?: boolean;
   minLength?: number;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
   return (
     <div className="space-y-1">
       <label className="text-xs font-semibold text-slate-500 uppercase">{label}</label>
-      <Input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        minLength={minLength}
-        className="h-10"
-      />
+      <div className="relative">
+        <Input
+          type={isPassword ? (showPassword ? "text" : "password") : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          minLength={minLength}
+          className={cn("h-10", isPassword && "pr-11")}
+        />
+        {isPassword ? (
+          <PasswordVisibilityToggle
+            visible={showPassword}
+            onToggle={() => setShowPassword(!showPassword)}
+            className="right-3"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1131,13 +1147,13 @@ function UserActionsRow({
       <tr>
         <td className="px-4 py-3">
           <div className="font-semibold text-slate-900 dark:text-slate-100">{user.username}</div>
-          <div className="text-xs text-slate-500">{user.email}</div>
+          <div className="text-xs text-slate-500">{user.email ?? user.phoneNumber ?? "—"}</div>
         </td>
         <td className="px-4 py-3">
           <Badge variant="secondary">{user.role}</Badge>
         </td>
         <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300">
-          {user.region}
+          {user.region ?? "—"}
           {user.assignedDistrict ? ` · ${user.assignedDistrict}` : ""}
         </td>
         <td className="px-4 py-3">
@@ -1272,8 +1288,8 @@ function EditUserModal({
   onSave: (body: Parameters<typeof patchSuperAdminUser>[1]) => void;
 }) {
   const [username, setUsername] = useState(user.username);
-  const [email, setEmail] = useState(user.email);
-  const [region, setRegion] = useState(user.region);
+  const [email, setEmail] = useState(user.email ?? "");
+  const [region, setRegion] = useState(user.region ?? "");
   const [role, setRole] = useState(user.role);
 
   const regionOptions = mergeRegionsForUser(user.region, regions);
@@ -1281,8 +1297,8 @@ function EditUserModal({
   useEffect(() => {
     if (open) {
       setUsername(user.username);
-      setEmail(user.email);
-      setRegion(user.region);
+      setEmail(user.email ?? "");
+      setRegion(user.region ?? "");
       setRole(user.role);
     }
   }, [open, user.id, user.username, user.email, user.region, user.role]);
@@ -1300,7 +1316,8 @@ function EditUserModal({
           const body: Parameters<typeof patchSuperAdminUser>[1] = {};
           if (username !== user.username) body.username = username;
           if (email !== user.email) body.email = email;
-          if (region !== user.region) body.region = region;
+          const priorRegion = user.region ?? "";
+          if (region !== priorRegion) body.region = region;
           if (role !== user.role) body.role = role;
           if (Object.keys(body).length === 0) {
             toast.message("No changes to save");

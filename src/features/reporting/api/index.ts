@@ -1,7 +1,10 @@
 import { api } from '@/shared/lib/axios';
 import type { HewDraftReportInput } from '../services/offlineStorage';
 
-export const postReport = async (report: HewDraftReportInput): Promise<void> => {
+export const postReport = async (
+  report: HewDraftReportInput,
+  reporterId?: string,
+): Promise<void> => {
   await api.post('/reports', {
     diseaseType: report.diseaseType,
     district: report.district,
@@ -11,6 +14,7 @@ export const postReport = async (report: HewDraftReportInput): Promise<void> => 
     reportDate: report.date,
     caseCount: report.cases,
     deathCount: report.deaths,
+    ...(reporterId ? { reporterId } : {}),
   });
 };
 

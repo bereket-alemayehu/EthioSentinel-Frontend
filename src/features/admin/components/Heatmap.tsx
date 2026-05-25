@@ -2,7 +2,13 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
-import { MapContainer, TileLayer, useMap, Popup, CircleMarker } from "react-leaflet";
+import { MapContainer, TileLayer, useMap, Popup, CircleMarker, Marker } from "react-leaflet";
+import {
+  aggregateDistricts,
+  createRiskPulseIcon,
+  resolveDistrictRiskLevel,
+  type MapRiskLevel,
+} from "./mapRiskMarkers";
 import { useTheme } from "next-themes";
 import type { GeoStat } from "../api";
 import { Database } from "lucide-react";
@@ -97,6 +103,52 @@ function MapLegend() {
 // ── Heatmap layer + circle markers ─────────────────────────────────────────
 interface HeatmapLayerProps {
   data: GeoStat[];
+  markerStyle?: "circle" | "pulse";
+}
+
+function getSeverityBadgeFromRisk(risk: MapRiskLevel) {
+  const styles: Record<MapRiskLevel, string> = {
+    CRITICAL: "background:#fee2e2;color:#991b1b;",
+    HIGH: "background:#ffedd5;color:#9a3412;",
+    MODERATE: "background:#fef3c7;color:#92400e;",
+    LOW: "background:#dcfce7;color:#166534;",
+  };
+  return { label: risk, style: styles[risk] };
+}
+
+function RiskPulseMarkers({ data }: { data: GeoStat[] }) {
+  const byDistrict = aggregateDistricts(data);
+
+  return (
+    <>
+      {[...byDistrict.entries()].map(([key, rows]) => {
+        const first = rows[0];
+        const totalCases = rows.reduce((s, r) => s + r.totalCases, 0);
+        const totalDeaths = rows.reduce((s, r) => s + r.totalDeaths, 0);
+        const totalReports = rows.reduce((s, r) => s + r.reportCount, 0);
+        const risk = resolveDistrictRiskLevel(rows);
+        const badge = getSeverityBadgeFromRisk(risk);
+
+        return (
+          <Marker
+            key={key}
+            position={[first.latitude!, first.longitude!]}
+            icon={createRiskPulseIcon(risk)}
+          >
+            <Popup minWidth={220}>
+              <PopupContent
+                rows={rows}
+                badge={badge}
+                totalCases={totalCases}
+                totalDeaths={totalDeaths}
+                totalReports={totalReports}
+              />
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
 }
 
 // Color palette for different diseases
@@ -116,7 +168,13 @@ function getDiseaseColor(disease: string): string {
   return DISEASE_COLORS[key] || DEFAULT_COLOR;
 }
 
-function HeatmapLayer({ data }: { data: GeoStat[] }) {
+function HeatmapLayer({
+  data,
+  markerStyle = "circle",
+}: {
+  data: GeoStat[];
+  markerStyle?: "circle" | "pulse";
+}) {
   const map = useMap();
   const heatLayerRef = useRef<any>(null);
   
@@ -154,15 +212,11 @@ function HeatmapLayer({ data }: { data: GeoStat[] }) {
     };
   }, [map, data]);
 
-  // Aggregate by district to show one marker per district (may have multiple disease rows)
-  const byDistrict = new Map<string, GeoStat[]>();
-  data
-    .filter((d) => d.latitude !== null && d.longitude !== null)
-    .forEach((d) => {
-      const key = `${d.district}||${d.latitude}||${d.longitude}`;
-      if (!byDistrict.has(key)) byDistrict.set(key, []);
-      byDistrict.get(key)!.push(d);
-    });
+  const byDistrict = aggregateDistricts(data);
+
+  if (markerStyle === "pulse") {
+    return <RiskPulseMarkers data={data} />;
+  }
 
   return (
     <>
@@ -347,14 +401,22 @@ function PopupContent({ rows, badge, totalCases, totalDeaths, totalReports }: {
 }
 
 // ── Public Heatmap export ────────────────────────────────────────────────────
-export function Heatmap({ data }: HeatmapLayerProps) {
+export function Heatmap({
+  data,
+  height = 600,
+  markerStyle = "circle",
+}: HeatmapLayerProps & { height?: number }) {
   const { theme, resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark" || theme === "dark";
   const center: [number, number] = [9.145, 40.4896];
+  const heightPx = `${height}px`;
 
   if (!data?.length) {
     return (
-      <div className="h-[600px] w-full rounded-xl border dark:border-slate-800 bg-linear-to-br from-slate-50 to-teal-50/30 dark:from-slate-900 dark:to-teal-950/20 flex flex-col items-center justify-center gap-3 transition-colors">
+      <div
+        className="w-full rounded-xl border dark:border-slate-800 bg-linear-to-br from-slate-50 to-teal-50/30 dark:from-slate-900 dark:to-teal-950/20 flex flex-col items-center justify-center gap-3 transition-colors"
+        style={{ height: heightPx }}
+      >
         <div className="text-5xl">🗺️</div>
         <div className="font-semibold text-slate-500 dark:text-slate-400 text-sm">No geo-spatial data available yet</div>
         <div className="text-slate-400 dark:text-slate-500 text-xs">Reports with district coordinates will appear here</div>
@@ -363,7 +425,10 @@ export function Heatmap({ data }: HeatmapLayerProps) {
   }
 
   return (
-    <div className="h-[600px] w-full rounded-xl overflow-hidden border dark:border-slate-800 shadow-inner bg-slate-50 dark:bg-slate-900 relative z-0 transition-colors">
+    <div
+      className="w-full rounded-xl overflow-hidden border dark:border-slate-800 shadow-inner bg-slate-50 dark:bg-slate-900 relative z-0 transition-colors"
+      style={{ height: heightPx }}
+    >
       <MapContainer
         center={center}
         zoom={6}
@@ -384,7 +449,7 @@ export function Heatmap({ data }: HeatmapLayerProps) {
             }
           })}
         />
-        <HeatmapLayer data={data} />
+        <HeatmapLayer data={data} markerStyle={markerStyle} />
         <MapLegend />
       </MapContainer>
     </div>

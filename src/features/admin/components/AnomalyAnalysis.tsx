@@ -198,7 +198,8 @@ export function AnomalyAnalysis({
       {
         onSuccess: (res) => {
           toast.success(
-            `${t("zScoreShort")}: ${res.zScore ?? "–"} · ${res.classification}`,
+            `${t("zScoreShort")}: ${res.zScore ?? "–"} · ${res.classification}. ${t("manualAnomalyNoNotify")}`,
+            { duration: 6000 },
           );
         },
         onError: (err: Error) => {
@@ -248,6 +249,9 @@ export function AnomalyAnalysis({
 
   return (
     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+      <p className="rounded-2xl border border-amber-200/80 bg-amber-50/90 dark:bg-amber-950/25 dark:border-amber-900/50 px-5 py-4 text-sm text-amber-950 dark:text-amber-100 leading-relaxed">
+        {t("manualAnomalyNoNotify")}
+      </p>
       <Card className="border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
         <CardHeader className="border-b dark:border-slate-800">
           <CardTitle className="flex items-center gap-2 text-lg font-black text-slate-800 dark:text-slate-100">

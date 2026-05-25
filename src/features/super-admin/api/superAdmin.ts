@@ -18,11 +18,11 @@ export type SuperAdminOverview = {
 export type GovernanceUser = {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
   role: string;
   isActive: boolean;
-  region: string;
+  region: string | null;
   assignedDistrict: string | null;
   clearanceLevel: number | null;
   createdAt: string;

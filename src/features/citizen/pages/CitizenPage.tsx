@@ -7,6 +7,7 @@ import type { District } from "@/features/advisory/types";
 import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
 import { useTranslation } from "react-i18next";
+import { RegionDistrictMap } from "../components/RegionDistrictMap";
 
 type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
 
@@ -151,6 +152,13 @@ export default function CitizenPage() {
     }
   }, [regions, selectedRegionId]);
 
+  // Keep expanded region card in sync with header region selector
+  useEffect(() => {
+    if (selectedRegionId) {
+      setExpandedRegionId(Number(selectedRegionId));
+    }
+  }, [selectedRegionId]);
+
   useEffect(() => {
     if (!regionStatus?.data.length || locationStatus !== "idle") return;
 
@@ -215,12 +223,20 @@ export default function CitizenPage() {
   const totalRegions = regions.length;
   const totalAdvisories = advisories.length;
   const regionalTotals = regionStatus?.totals;
+  const focusRegionId = useMemo(() => {
+    if (showAllRegions) return null;
+    if (selectedRegionId) return Number(selectedRegionId);
+    if (detectedArea) return detectedArea.regionId;
+    return null;
+  }, [selectedRegionId, detectedArea, showAllRegions]);
+
   const visibleRegionStatuses = useMemo(() => {
     const statuses = regionStatus?.data ?? [];
-    if (!detectedArea || showAllRegions) return statuses;
-    return statuses.filter((region) => region.regionId === detectedArea.regionId);
-  }, [detectedArea, regionStatus?.data, showAllRegions]);
-  const focusedRegionStatus = detectedArea && !showAllRegions ? visibleRegionStatuses[0] : null;
+    if (focusRegionId == null) return statuses;
+    return statuses.filter((region) => region.regionId === focusRegionId);
+  }, [regionStatus?.data, focusRegionId]);
+
+  const focusedRegionStatus = focusRegionId != null ? visibleRegionStatuses[0] ?? null : null;
   const dashboardTotals = focusedRegionStatus
     ? {
         cases: focusedRegionStatus.totalCases,
@@ -302,6 +318,8 @@ export default function CitizenPage() {
                   onChange={(e) => {
                     setSelectedRegionId(e.target.value);
                     setSelectedDistrictId("");
+                    setShowAllRegions(false);
+                    setExpandedRegionId(Number(e.target.value));
                   }}
                   className="min-w-[160px] rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-2.5 text-sm text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/40 transition cursor-pointer"
                 >
@@ -664,6 +682,8 @@ export default function CitizenPage() {
                               </div>
                             ))}
                           </div>
+
+                          <RegionDistrictMap region={region} />
                         </div>
                       )}
                     </div>
