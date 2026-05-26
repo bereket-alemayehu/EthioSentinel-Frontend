@@ -18,7 +18,7 @@ interface HEWSummaryCardProps {
   dailyThroughput?: number;
   activeSessionInfo?: {
     userName: string;
-    district: string;
+    location: string;
   };
   isThroughputLoading?: boolean;
 }
@@ -104,7 +104,7 @@ export const HEWSummaryCard: React.FC<HEWSummaryCardProps> = ({
             </p>
             {activeSessionInfo && (
               <p className="text-[9px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-tight flex items-center gap-1 mt-0.5">
-                {activeSessionInfo.userName} @ {activeSessionInfo.district} <BadgeCheck className="w-3 h-3" />
+                {activeSessionInfo.userName} @ {activeSessionInfo.location} <BadgeCheck className="w-3 h-3" />
               </p>
             )}
           </div>

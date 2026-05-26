@@ -17,6 +17,7 @@ const SuperAdminPage = lazy(() => import('@/features/super-admin/pages/SuperAdmi
 const AdvisoryPage = lazy(() => import('@/features/advisory/pages/AdvisoryPage'));
 const ProfilePage = lazy(() => import('@/features/auth/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/features/auth/pages/SettingsPage'));
+const HealthNewsPage = lazy(() => import('@/features/citizen/pages/HealthNews'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -133,6 +134,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <SearchPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'news',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <HealthNewsPage />
           </Suspense>
         ),
       },

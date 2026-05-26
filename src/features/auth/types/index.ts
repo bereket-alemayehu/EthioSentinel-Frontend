@@ -7,6 +7,7 @@ export interface User {
   role: UserRole;
   region: string;
   assignedDistrict?: string;
+  healthFacilityId?: number | null;
   phoneNumber?: string | null;
   clearanceLevel?: number | null;
   isActive?: boolean;
