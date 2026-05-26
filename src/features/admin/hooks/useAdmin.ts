@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getAlerts,
+  getAlertById,
   updateAlertStatus,
   getAnomalies,
   getAnomalyTimeseries,
@@ -12,6 +13,7 @@ import {
 export const adminKeys = {
   all: ['admin'] as const,
   alerts: () => [...adminKeys.all, 'alerts'] as const,
+  alertDetail: (id: string) => [...adminKeys.all, 'alert', id] as const,
   geoStats: (filters: any) => [...adminKeys.all, 'geoStats', filters] as const,
   anomalies: (filters: any) =>
     [...adminKeys.all, 'anomalies', filters] as const,
@@ -26,13 +28,24 @@ export const useAlerts = () => {
   });
 };
 
+export const useAlertDetail = (id: string | undefined) => {
+  return useQuery({
+    queryKey: adminKeys.alertDetail(id ?? ''),
+    queryFn: () => getAlertById(id!),
+    enabled: Boolean(id),
+  });
+};
+
 export const useUpdateAlertStatusMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (args: { id: number | string; action: 'approve' | 'reject' }) =>
       updateAlertStatus(args.id, args.action),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: adminKeys.alerts() });
+      void queryClient.invalidateQueries({
+        queryKey: adminKeys.alertDetail(String(variables.id)),
+      });
     },
   });
 };

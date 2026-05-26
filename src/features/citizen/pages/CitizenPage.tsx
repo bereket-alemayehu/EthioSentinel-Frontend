@@ -11,6 +11,7 @@ import type { District } from "@/features/advisory/types";
 import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
 import { syncGeolocationFromDeviceApi } from "@/features/auth/api/auth";
+import { RegionDistrictMap } from "../components/RegionDistrictMap";
 
 type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
 
@@ -368,6 +369,7 @@ export default function CitizenPage() {
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("");
+  const [expandedRegionId, setExpandedRegionId] = useState<number | null>(null);
   const [regionQuery, setRegionQuery] = useState<string>("");
   const [districtQuery, setDistrictQuery] = useState<string>("");
   const [showRegionList, setShowRegionList] = useState(false);
@@ -387,6 +389,13 @@ export default function CitizenPage() {
       setSelectedRegionId(String(regions[0].id));
     }
   }, [regions, selectedRegionId]);
+
+  // Keep expanded region card in sync with header region selector
+  useEffect(() => {
+    if (selectedRegionId) {
+      setExpandedRegionId(Number(selectedRegionId));
+    }
+  }, [selectedRegionId]);
 
   useEffect(() => {
     setRegionQuery(selectedRegion?.name ?? "");
@@ -512,12 +521,19 @@ export default function CitizenPage() {
   const totalRegions = regions.length;
   const totalAdvisories = advisories.length;
   const regionalTotals = regionStatus?.totals;
+  const focusRegionId = useMemo(() => {
+    if (showAllRegions) return null;
+    if (selectedRegionId) return Number(selectedRegionId);
+    if (detectedArea) return detectedArea.regionId;
+    return null;
+  }, [selectedRegionId, detectedArea, showAllRegions]);
 
-  const focusedRegionStatus = useMemo(() => {
-    if (!detectedArea || showAllRegions) return null;
-    return regionStatus?.data?.find((region) => region.regionId === detectedArea.regionId) ?? null;
-  }, [detectedArea, regionStatus?.data, showAllRegions]);
-
+  const visibleRegionStatuses = useMemo(() => {
+    const statuses = regionStatus?.data ?? [];
+    if (focusRegionId == null) return statuses;
+    return statuses.filter((region) => region.regionId === focusRegionId);
+  }, [regionStatus?.data, focusRegionId]);
+  const focusedRegionStatus = focusRegionId != null ? visibleRegionStatuses[0] ?? null : null;
   const dashboardTotals = focusedRegionStatus
     ? { cases: focusedRegionStatus.totalCases, deaths: focusedRegionStatus.totalDeaths, reports: focusedRegionStatus.reportCount, spikes: focusedRegionStatus.spikeCount }
     : regionalTotals;
@@ -867,6 +883,8 @@ export default function CitizenPage() {
                               </div>
                             ))}
                           </div>
+
+                          <RegionDistrictMap region={region} />
                         </div>
                       )}
 

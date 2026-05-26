@@ -38,7 +38,8 @@ import { HEWSummaryCard } from "@/features/reporting/components/HEWSummaryCard";
 export default function HEWPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const reportMutation = useReportMutation();
+  const reporterId = user?.id;
+  const reportMutation = useReportMutation(reporterId);
   const [activeTab, setActiveTab] = useState<'queue' | 'archive'>('queue');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -46,7 +47,7 @@ export default function HEWPage() {
   const { data: serverResult, refetch: refetchServerReports, isPending: isLoadingHistory } = useReports(currentPage, pageSize);
   const serverReports = serverResult?.reports || [];
   const totalPages = serverResult?.totalPages || 1;
-  const syncMutation = useSyncReportsMutation();
+  const syncMutation = useSyncReportsMutation(reporterId);
   const updateServerMutation = useUpdateReportMutation();
   const deleteServerMutation = useDeleteReportMutation();
   const { data: diseaseList = [] } = useDiseases();
@@ -179,14 +180,14 @@ export default function HEWPage() {
   useEffect(() => {
     void refreshQueue();
     
-    // Initial sync on mount if online
-    if (navigator.onLine) {
+    // Initial sync on mount if online (needs logged-in user for reporterId)
+    if (navigator.onLine && reporterId) {
       void syncNow(true);
     }
 
     const onOnline = () => {
       setIsOnline(true);
-      void syncNow(true); // Silent sync on reconnection
+      if (reporterId) void syncNow(true);
     };
     const onOffline = () => setIsOnline(false);
 
@@ -195,7 +196,7 @@ export default function HEWPage() {
 
     // Background sync heartbeat every 30 seconds if online
     const interval = setInterval(() => {
-      if (navigator.onLine && pendingCount > 0) {
+      if (navigator.onLine && reporterId && pendingCount > 0) {
         void syncNow(true);
       }
     }, 30000);
@@ -205,7 +206,7 @@ export default function HEWPage() {
       window.removeEventListener("offline", onOffline);
       clearInterval(interval);
     };
-  }, [pendingCount]); // Refetch when pendingCount changes to keep interval aware
+  }, [pendingCount, reporterId]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

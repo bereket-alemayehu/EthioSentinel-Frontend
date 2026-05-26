@@ -28,17 +28,50 @@ function coerceUser(apiUser: User): User {
   return { ...apiUser, role };
 }
 
+export type OtpChannel = "email" | "sms";
+
+export type OtpDelivery = {
+  email: boolean;
+  sms: boolean;
+  devConsoleOnly?: boolean;
+};
+
+export type RegisterResponse = {
+  user: User;
+  otpDelivery: OtpDelivery;
+  otpChannel: OtpChannel;
+  message: string;
+  /** Present in development when email/SMS delivery failed — use on the OTP step. */
+  devOtpCode?: string;
+};
+
 export async function registerApi(input: {
   username: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   email?: string;
   password: string;
   region?: string;
   assignedDistrict?: string;
   recaptchaToken: string;
-}): Promise<User> {
-  const response = await api.post<AuthResponse>("/auth/register", input);
-  return coerceUser(response.data.data.user);
+  otpChannel: OtpChannel;
+}): Promise<RegisterResponse> {
+  const response = await api.post<{
+    success: boolean;
+    message: string;
+    data: {
+      user: User;
+      otpDelivery: OtpDelivery;
+      otpChannel: OtpChannel;
+      devOtpCode?: string;
+    };
+  }>("/auth/register", input);
+  return {
+    user: coerceUser(response.data.data.user),
+    otpDelivery: response.data.data.otpDelivery ?? { email: false, sms: false },
+    otpChannel: response.data.data.otpChannel ?? input.otpChannel,
+    message: response.data.message,
+    devOtpCode: response.data.data.devOtpCode,
+  };
 }
 
 export async function verifyOtpApi(userId: string, code: string): Promise<User> {
@@ -48,16 +81,45 @@ export async function verifyOtpApi(userId: string, code: string): Promise<User> 
   return user;
 }
 
-export async function resendOtpApi(userId: string): Promise<void> {
-  await api.post("/auth/resend-otp", { userId });
+export async function resendOtpApi(
+  userId: string,
+  otpChannel: OtpChannel,
+): Promise<{ message: string; devOtpCode?: string }> {
+  const response = await api.post<{
+    success: boolean;
+    message: string;
+    data?: { devOtpCode?: string };
+  }>(
+    "/auth/resend-otp",
+    { userId, otpChannel },
+  );
+  return {
+    message: response.data.message,
+    devOtpCode: response.data.data?.devOtpCode,
+  };
 }
 
-export async function forgotPasswordApi(phoneNumber: string): Promise<void> {
-  await api.post("/auth/forgot-password", { phoneNumber });
+export async function forgotPasswordApi(input: {
+  identifier: string;
+  otpChannel: OtpChannel;
+}): Promise<{ message: string; devOtpCode?: string }> {
+  const response = await api.post<{
+    success: boolean;
+    message: string;
+    data?: { devOtpCode?: string };
+  }>("/auth/forgot-password", input);
+  return {
+    message: response.data.message,
+    devOtpCode: response.data.data?.devOtpCode,
+  };
 }
 
-export async function resetPasswordApi(phoneNumber: string, otpCode: string, newPassword: string): Promise<void> {
-  await api.post("/auth/reset-password", { phoneNumber, otpCode, newPassword });
+export async function resetPasswordApi(
+  identifier: string,
+  otpCode: string,
+  newPassword: string,
+): Promise<void> {
+  await api.post("/auth/reset-password", { identifier, otpCode, newPassword });
 }
 
 

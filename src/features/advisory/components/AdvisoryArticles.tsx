@@ -8,6 +8,12 @@ import {
   shareAdvisoryNative,
   type AdvisorySharePayload,
 } from "@/shared/utils/advisorySharing";
+import {
+  parsePublicAdvisoryBlocks,
+  publicAdvisoryTitle,
+  resolvePublicDiseaseLabel,
+  type AdvisoryContentBlock,
+} from "@/shared/utils/healthMessaging";
 
 const RISK_CONFIG: Record<
   RiskLevel,
@@ -53,38 +59,77 @@ function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePa
         minute: "2-digit",
       })
     : t("recentAdvisory");
+  const disease =
+    resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
+    t("generalHealth");
   return {
     title: publicAdvisoryTitle(item.title),
-    content: publicAdvisoryParagraphs(item.content).join("\n\n"),
+    content: parsePublicAdvisoryBlocks(item.content)
+      .map((b) =>
+        b.kind === "list"
+          ? b.items.map((it, i) => `${i + 1}. ${it}`).join("\n")
+          : b.kind === "heading"
+            ? `${b.text}:`
+            : b.text,
+      )
+      .join("\n\n"),
     locationLabel: item.district?.name ?? item.region?.name ?? t("national"),
-    diseaseLabel: item.disease?.name ?? t("generalHealth"),
+    diseaseLabel: disease,
     riskLevel: item.riskLevel,
     issuedAt: issued,
   };
 }
 
-function publicAdvisoryTitle(title: string) {
-  return title
-    .replace(/^AI\s*Draft:\s*/i, "")
-    .replace(/\s*spike detected\s*/i, " health update ")
-    .trim();
-}
+function AdvisoryBody({ blocks }: { blocks: AdvisoryContentBlock[] }) {
+  if (blocks.length === 0) return null;
 
-function publicAdvisoryParagraphs(content: string) {
-  return content
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^AI anomaly signal detected for/i, "Health monitoring detected a change for")
-        .replace(/This draft was generated automatically.*$/i, "")
-        .trim(),
-    )
-    .filter((line) => {
-      if (!line) return false;
-      if (/requires\s+ADMIN\s+review/i.test(line)) return false;
-      if (/draft\s+advisory/i.test(line)) return false;
-      return true;
-    });
+  return (
+    <div className="space-y-6 text-slate-700 dark:text-slate-300 leading-relaxed">
+      {blocks.map((block, i) => {
+        if (block.kind === "heading") {
+          return (
+            <h3
+              key={i}
+              className="text-base font-black uppercase tracking-wide text-teal-800 dark:text-teal-300 pt-2"
+            >
+              {block.text}
+            </h3>
+          );
+        }
+        if (block.kind === "list") {
+          const ListTag = block.ordered ? "ol" : "ul";
+          return (
+            <ListTag
+              key={i}
+              className={
+                block.ordered
+                  ? "list-decimal list-outside pl-6 space-y-3 text-[16px] sm:text-[17px] font-medium"
+                  : "list-disc list-outside pl-6 space-y-3 text-[16px] sm:text-[17px] font-medium"
+              }
+            >
+              {block.items.map((item, j) => (
+                <li key={j} className="pl-1 leading-[1.65]">
+                  {item}
+                </li>
+              ))}
+            </ListTag>
+          );
+        }
+        return (
+          <p
+            key={i}
+            className={`text-[16px] sm:text-[17px] font-medium leading-[1.75] ${
+              i === 0
+                ? "first-letter:text-3xl first-letter:font-bold first-letter:text-primary first-letter:mr-1.5"
+                : ""
+            }`}
+          >
+            {block.text}
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 interface AdvisoryArticlesProps {
@@ -151,6 +196,9 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
               minute: "2-digit",
             })
           : t("recentAdvisory");
+        const diseaseLabel =
+          resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
+          t("generalHealth");
 
         return (
           <article key={item.id} className="py-12 first:pt-0 group transition-all">
@@ -184,21 +232,11 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
                   📍 {item.district?.name || item.region?.name || t("national")}
                 </span>
                 <span>•</span>
-                <span>🦠 {item.disease?.name || t("generalHealth")}</span>
+                <span>🦠 {diseaseLabel}</span>
               </div>
             </div>
 
-            <div className="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-              {publicAdvisoryParagraphs(item.content)
-                .map((para, i) => (
-                  <p
-                    key={i}
-                    className="mb-6 last:mb-0 first-letter:text-2xl first-letter:font-bold first-letter:text-primary first-letter:mr-1"
-                  >
-                    {para}
-                  </p>
-                ))}
-            </div>
+            <AdvisoryBody blocks={parsePublicAdvisoryBlocks(item.content)} />
 
             <div className="mt-10 flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-4 text-muted-foreground">

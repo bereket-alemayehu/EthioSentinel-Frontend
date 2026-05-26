@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
-import { FileText, Clock, CheckCircle, ShieldCheck, CheckCircle2, Trash2, Undo2 } from "lucide-react";
+import { FileText, Clock, CheckCircle, ShieldCheck, CheckCircle2, Trash2, Undo2, Eye } from "lucide-react";
+import { AdvisoryDetailModal } from "@/features/admin/components/AdvisoryDetailModal";
 import { cn } from "@/shared/utils/cn";
 import { getSeverityLevel } from "@/features/admin/utils";
 import { useTranslation } from "react-i18next";
@@ -30,6 +32,7 @@ export function AdvisoryManagement({
   pendingAction
 }: AdvisoryManagementProps) {
   const { t } = useTranslation();
+  const [detailId, setDetailId] = useState<string | null>(null);
   const currentList = subTab === "pending" ? drafts : approved;
   const isListLoading = subTab === "pending" ? isLoading : approvedLoading;
 
@@ -78,9 +81,14 @@ export function AdvisoryManagement({
               <FileText className="w-5 h-5 text-teal-600" />
               {subTab === "pending" ? t("healthAdvisoryDrafts") : t("publishedAdvisories")}
             </CardTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-              {subTab === "pending" ? t("draftsDesc") : t("publishedDesc")}
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-2xl">
+              {subTab === "pending" ? t("advisoryTabHint") : t("publishedDesc")}
             </p>
+            {subTab === "pending" ? (
+              <p className="text-xs text-teal-700/90 dark:text-teal-400/90 font-medium max-w-2xl">
+                {t("advisoryPublishedDestination")}
+              </p>
+            ) : null}
           </div>
         </CardHeader>
 
@@ -135,7 +143,11 @@ export function AdvisoryManagement({
                         : "—";
 
                     return (
-                      <tr key={advisory.id} className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-all cursor-default">
+                      <tr
+                        key={advisory.id}
+                        className="group hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-all cursor-pointer"
+                        onClick={() => setDetailId(advisory.id)}
+                      >
                         <td className="px-8 py-6">
                           <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-xl font-bold text-[10px] uppercase tracking-tighter border shadow-xs", sev.bg, sev.color, "border-current/10")}>
                             {sev.icon}
@@ -163,8 +175,16 @@ export function AdvisoryManagement({
                             </p>
                           </div>
                         </td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                        <td className="px-8 py-6 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setDetailId(advisory.id)}
+                              className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 hover:text-teal-700 transition-all"
+                              title={t("viewDetails")}
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
                             {subTab === "pending" ? (
                               <>
                                 <button
@@ -223,6 +243,8 @@ export function AdvisoryManagement({
           </div>
         </CardContent>
       </Card>
+
+      <AdvisoryDetailModal advisoryId={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }

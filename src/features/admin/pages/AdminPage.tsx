@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAlerts, useUpdateAlertStatusMutation, useGeoStats } from "@/features/admin/hooks/useAdmin";
 import { useAdvisoryDrafts, useApprovedAdvisories, useUpdateAdvisoryStatusMutation } from "@/features/admin/hooks/useAdvisoryActions";
@@ -12,7 +12,10 @@ import { AlertApprovals } from "@/features/admin/components/AlertApprovals";
 import { AdvisoryManagement } from "@/features/admin/components/AdvisoryManagement";
 import { MapIntelligence } from "@/features/admin/components/MapIntelligence";
 import { AnomalyAnalysis } from "@/features/admin/components/AnomalyAnalysis";
+import { AdvisoryDetailModal } from "@/features/admin/components/AdvisoryDetailModal";
 import { aggregateByDistrict } from "@/features/admin/utils";
+import { getApiErrorMessage } from "@/shared/lib/apiErrors";
+import { toast } from "sonner";
 
 const ADMIN_TABS: AdminTab[] = ["alerts", "advisories", "map", "anomaly"];
 
@@ -54,6 +57,15 @@ export default function AdminPage() {
   const [advisorySubTab, setAdvisorySubTab] = useState<"pending" | "approved">(
     "pending"
   );
+  const [linkedAdvisoryId, setLinkedAdvisoryId] = useState<string | null>(null);
+
+  const openAdvisoryFromAlert = useCallback(
+    (advisoryId: string) => {
+      setLinkedAdvisoryId(advisoryId);
+      setTab("advisories");
+    },
+    [setSearchParams],
+  );
   const { data: advisoryDrafts = [], isLoading: advisoriesLoading } =
     useAdvisoryDrafts();
   const { data: approvedAdvisories = [], isLoading: approvedLoading } =
@@ -69,7 +81,7 @@ export default function AdminPage() {
     try {
       await updateMutation.mutateAsync({ id, action });
     } catch (err) {
-      console.error("Action failed", err);
+      toast.error(getApiErrorMessage(err, t("actionFailed")));
     }
   };
 
@@ -130,7 +142,7 @@ export default function AdminPage() {
       {/* ── TAB: ALERT APPROVALS ───────────────────────────────────────── */}
       {activeTab === "alerts" && (
         <AlertApprovals
-          alerts={alerts}
+          alerts={alerts.filter((a) => a.status === "Draft")}
           loading={loading}
           handleUpdate={handleUpdate}
           actionLoadingId={actionLoadingId}
@@ -179,6 +191,11 @@ export default function AdminPage() {
       {activeTab === "anomaly" && (
         <AnomalyAnalysis geoStats={geoStats} geoLoading={geoLoading} t={t} />
       )}
+
+      <AdvisoryDetailModal
+        advisoryId={linkedAdvisoryId}
+        onClose={() => setLinkedAdvisoryId(null)}
+      />
     </div>
   );
 }

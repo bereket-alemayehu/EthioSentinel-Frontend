@@ -5,6 +5,74 @@
 @import "@fontsource-variable/geist";
 @import "leaflet/dist/leaflet.css";
 
+/* Leaflet district risk markers (pulsing rings — LOW uses stronger glow for visibility) */
+.risk-pulse-marker-leaflet {
+  background: transparent !important;
+  border: none !important;
+}
+
+.risk-pulse-marker {
+  position: relative;
+  width: var(--risk-size, 36px);
+  height: var(--risk-size, 36px);
+  pointer-events: none;
+}
+
+.risk-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--risk-color);
+  animation: risk-pulse-expand 2.2s ease-out infinite;
+  box-sizing: border-box;
+}
+
+.risk-pulse-ring--delay {
+  animation-delay: 1.1s;
+}
+
+.risk-pulse-core {
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: var(--risk-color);
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 10px var(--risk-color);
+  pointer-events: auto;
+}
+
+.risk-pulse-marker[data-risk="LOW"] .risk-pulse-ring {
+  border-width: 4px;
+  animation-duration: 2.8s;
+}
+
+.risk-pulse-marker[data-risk="LOW"] .risk-pulse-core {
+  inset: 18%;
+  box-shadow:
+    0 0 12px var(--risk-color),
+    0 0 22px color-mix(in srgb, var(--risk-color) 55%, transparent);
+}
+
+.risk-pulse-marker[data-risk="CRITICAL"] .risk-pulse-core {
+  box-shadow:
+    0 0 12px var(--risk-color),
+    0 0 20px color-mix(in srgb, var(--risk-color) 45%, transparent);
+}
+
+@keyframes risk-pulse-expand {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-animate";
@@ -349,4 +417,19 @@ body,
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
   }
+}
+
+/* reCAPTCHA iframes break when ancestors use blur/transform — keep host layer plain */
+.auth-recaptcha-panel,
+.auth-recaptcha-host {
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.auth-recaptcha-host iframe {
+  max-width: 100%;
 }

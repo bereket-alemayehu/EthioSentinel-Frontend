@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { 
-  LayoutDashboard, 
   Search, 
   Bell,
   Menu,
@@ -9,7 +8,8 @@ import {
   Settings,
   LogOut,
   User,
-  Shield
+  Shield,
+  HeartPulse,
 } from "lucide-react"
 
 import { cn } from "@/shared/utils/cn"
@@ -33,8 +33,7 @@ import { languages } from "@/shared/lib/i18n"
 import { ModeToggle } from "@/shared/components/ui/ModeToggle"
 import { useAuth } from "@/app/providers/auth/AuthProvider"
 import { useTranslation } from "react-i18next"
-import { useTheme } from "next-themes"
-import { toast, Toaster } from "sonner"
+import { toast } from "sonner"
 import { logoB64 } from "@/assets/logo-b64"
 import { useNotifications } from "@/shared/hooks/useNotifications"
 import { markNotificationsReadNow } from "@/shared/lib/notificationsPrefs"
@@ -46,7 +45,6 @@ export function Navbar() {
   const navigate = useNavigate()
    const { user, logout } = useAuth()
    const { t, i18n } = useTranslation()
-   const { theme } = useTheme()
    const {
      items: notificationItems,
      unreadCount,
@@ -56,7 +54,12 @@ export function Navbar() {
   
 
   const navItems = [
-    { name: t("dashboard"), href: "/dashboard", icon: LayoutDashboard, roles: ["hew", "admin", "super_admin"] },
+    {
+      name: t("citizenService"),
+      href: "/citizen",
+      icon: HeartPulse,
+      roles: ["hew", "admin", "super_admin"],
+    },
     { name: t("healthWorker"), href: "/hew", icon: Search, roles: ["hew", "admin", "super_admin"] },
     { name: t("adminPanel"), href: "/admin", icon: Settings, roles: ["admin", "super_admin"] },
     { name: t("superAdminPanel"), href: "/super-admin", icon: Shield, roles: ["super_admin"] },
@@ -238,13 +241,6 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Toaster 
-              position="top-right" 
-              richColors 
-              expand={true}
-              closeButton
-              theme={theme as "light" | "dark" | "system"}
-            />
             <ModeToggle />
 
             <div className="hidden sm:flex items-center gap-1 overflow-hidden rounded-full border border-border mr-2">

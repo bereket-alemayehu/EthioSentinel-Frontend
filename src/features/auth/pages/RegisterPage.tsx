@@ -6,29 +6,49 @@ import { Input } from '@/shared/components/ui/input';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { registerApi, verifyOtpApi, setStoredUser, resendOtpApi } from '@/features/auth/api/auth';
-import ReCAPTCHA from 'react-google-recaptcha';
+import {
+  registerApi,
+  verifyOtpApi,
+  setStoredUser,
+  resendOtpApi,
+  type OtpChannel,
+} from '@/features/auth/api/auth';
+import type ReCAPTCHA from 'react-google-recaptcha';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
-import { getRecaptchaSiteKey } from '@/shared/lib/recaptcha';
+import { useRecaptchaSiteKey } from '@/shared/hooks/useRecaptchaSiteKey';
+import { AuthRecaptcha } from '@/features/auth/components/AuthRecaptcha';
+import { PasswordVisibilityToggle } from '@/shared/components/ui/PasswordVisibilityToggle';
+import { authFieldIconClass, authFieldIconSize } from '@/features/auth/authFieldStyles';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'register' | 'otp'>('register');
   const [userId, setUserId] = useState<string | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+  const [otpHint, setOtpHint] = useState('');
+  const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>('email');
 
   const isOnline = useOnlineStatus();
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(
     !navigator.onLine ? 'OFFLINE' : null
   );
-  const recaptchaSiteKey = getRecaptchaSiteKey();
+  const { siteKey: recaptchaSiteKey, loading: recaptchaLoading, ready: recaptchaReady, isConfigured: recaptchaConfigured, isTestKey } =
+    useRecaptchaSiteKey();
 
-  // Sync token when connectivity changes
+  const handleRecaptchaToken = React.useCallback((token: string | null) => {
+    setRecaptchaToken(token);
+  }, []);
+
+  const prevOnlineRef = React.useRef(isOnline);
   useEffect(() => {
+    if (prevOnlineRef.current === isOnline) return;
+    prevOnlineRef.current = isOnline;
     if (!isOnline) {
       recaptchaRef.current?.reset();
       setRecaptchaToken('OFFLINE');
@@ -58,17 +78,40 @@ export default function RegisterPage() {
       toast.error('Please verify that you are human');
       return;
     }
+    const email = form.email.trim();
+    const phone = form.phoneNumber.trim();
+    if (otpChannel === 'email' && !email) {
+      toast.error('Enter your email address to receive the verification code');
+      return;
+    }
+    if (otpChannel === 'sms' && !phone) {
+      toast.error('Enter your phone number to receive the verification code');
+      return;
+    }
+    if (!email && !phone) {
+      toast.error('Enter an email or phone number for your account');
+      return;
+    }
     setLoading(true);
     try {
-      const user = await registerApi({
+      const { user, message, otpChannel: channel, devOtpCode: devCode } = await registerApi({
         username: form.username.trim(),
-        phoneNumber: form.phoneNumber.trim(),
-        email: form.email.trim() || undefined,
+        phoneNumber: phone || undefined,
+        email: email || undefined,
         password: form.password,
         recaptchaToken,
+        otpChannel,
       });
+      setOtpChannel(channel);
       setUserId(user.id);
+      setOtpHint(message);
+      setDevOtpCode(devCode ?? null);
       setStep('otp');
+      if (message.includes('backend terminal') || message.includes('Brevo')) {
+        toast.warning(message, { duration: 12_000 });
+      } else {
+        toast.success(message);
+      }
     } catch (err: unknown) {
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
@@ -97,8 +140,14 @@ export default function RegisterPage() {
     if (!userId || resendTimer > 0) return;
     setLoading(true);
     try {
-      await resendOtpApi(userId);
-      toast.success('A new verification code has been sent');
+      const { message, devOtpCode: devCode } = await resendOtpApi(userId, otpChannel);
+      setOtpHint(message);
+      setDevOtpCode(devCode ?? null);
+      if (message.includes('backend terminal') || message.includes('Brevo')) {
+        toast.warning(message, { duration: 12_000 });
+      } else {
+        toast.success(message);
+      }
       setResendTimer(30);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to resend code');
@@ -127,11 +176,15 @@ export default function RegisterPage() {
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">{step === 'register' ? t('registerHeading') : 'Verify Account'}</h1>
             <p className="text-white/70 text-sm">
-              {step === 'register' 
-                ? t('registerSubtitle') 
-                : `Enter the 6-digit code sent to ${form.email || form.phoneNumber}`
-              }
+              {step === 'register'
+                ? t('registerSubtitle')
+                : otpHint || 'Enter the 6-digit verification code.'}
             </p>
+            {step === 'otp' && devOtpCode ? (
+              <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/20 px-3 py-2 text-sm font-mono font-bold tracking-widest text-amber-100">
+                Dev code: {devOtpCode}
+              </p>
+            ) : null}
           </div>
 
           <AnimatePresence mode="wait">
@@ -146,8 +199,8 @@ export default function RegisterPage() {
               >
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-white/50 uppercase ml-1">{t('username')}</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+                  <div className="relative group">
+                    <User className={`${authFieldIconClass} ${authFieldIconSize}`} />
                     <Input
                       required
                       className="h-12 pl-11 bg-white/5 border-white/10 text-white rounded-xl"
@@ -158,12 +211,64 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-white/50 uppercase ml-1">Phone Number</label>
-                  <div className="relative">
-                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+                  <span className="text-xs font-semibold text-white/50 uppercase ml-1">
+                    Send verification code via
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel('email')}
+                      className={`flex items-center justify-center gap-2 h-11 rounded-xl border text-sm font-bold transition-colors ${
+                        otpChannel === 'email'
+                          ? 'bg-white text-[#0f6b7c] border-white'
+                          : 'bg-white/5 text-white/80 border-white/20 hover:bg-white/10'
+                      }`}
+                    >
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel('sms')}
+                      className={`flex items-center justify-center gap-2 h-11 rounded-xl border text-sm font-bold transition-colors ${
+                        otpChannel === 'sms'
+                          ? 'bg-white text-[#0f6b7c] border-white'
+                          : 'bg-white/5 text-white/80 border-white/20 hover:bg-white/10'
+                      }`}
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      SMS
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/50 uppercase ml-1">
+                    {t('emailAddress')}
+                    {otpChannel !== 'email' ? ' (Optional)' : ''}
+                  </label>
+                  <div className="relative group">
+                    <Mail className={`${authFieldIconClass} ${authFieldIconSize}`} />
+                    <Input
+                      type="email"
+                      required={otpChannel === 'email'}
+                      className="h-12 pl-11 bg-white/5 border-white/10 text-white rounded-xl"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-white/50 uppercase ml-1">
+                    Phone Number
+                    {otpChannel !== 'sms' ? ' (Optional)' : ''}
+                  </label>
+                  <div className="relative group">
+                    <Smartphone className={`${authFieldIconClass} ${authFieldIconSize}`} />
                     <Input
                       type="tel"
-                      required
+                      required={otpChannel === 'sms'}
                       placeholder="+251..."
                       className="h-12 pl-11 bg-white/5 border-white/10 text-white rounded-xl"
                       value={form.phoneNumber}
@@ -173,49 +278,47 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-white/50 uppercase ml-1">{t('emailAddress')} (Optional)</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
-                    <Input
-                      type="email"
-                      className="h-12 pl-11 bg-white/5 border-white/10 text-white rounded-xl"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
                   <label className="text-xs font-semibold text-white/50 uppercase ml-1">{t('password')}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 w-4 h-4" />
+                  <div className="relative group">
+                    <Lock className={`${authFieldIconClass} ${authFieldIconSize}`} />
                     <Input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       minLength={8}
-                      className="h-12 pl-11 bg-white/5 border-white/10 text-white rounded-xl"
+                      className="h-12 pl-11 pr-12 bg-white/5 border-white/10 text-white rounded-xl"
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    />
+                    <PasswordVisibilityToggle
+                      visible={showPassword}
+                      onToggle={() => setShowPassword(!showPassword)}
+                      className="right-4"
                     />
                   </div>
                 </div>
 
                 {isOnline && (
                   <div className="flex flex-col items-center justify-center mt-2 gap-2">
-                    {recaptchaSiteKey ? (
-                      <ReCAPTCHA
+                    {recaptchaLoading ? (
+                      <p className="text-center text-xs text-white/60 px-2">Loading security check…</p>
+                    ) : recaptchaReady && recaptchaConfigured ? (
+                      <AuthRecaptcha
                         ref={recaptchaRef}
-                        sitekey={recaptchaSiteKey}
-                        onChange={(token) => setRecaptchaToken(token)}
-                        onExpired={() => setRecaptchaToken(null)}
-                        onErrored={() => setRecaptchaToken('OFFLINE')} // Google unreachable → bypass
-                        theme="light"
+                        siteKey={recaptchaSiteKey}
+                        onTokenChange={handleRecaptchaToken}
                       />
                     ) : (
-                      <p className="text-center text-xs text-amber-100/95 px-2">
-                        reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
+                      <p className="text-center text-xs text-amber-100/95 px-2 max-w-sm">
+                        reCAPTCHA is not configured. In <code className="rounded bg-black/20 px-1">ethiosentinel-backend/.env</code> set{' '}
+                        <code className="rounded bg-black/20 px-1">RECAPTCHA_SITE_KEY</code> and{' '}
+                        <code className="rounded bg-black/20 px-1">SITESECRET</code> from Google reCAPTCHA admin, then restart the backend.
                       </p>
                     )}
+                    {isTestKey ? (
+                      <p className="text-center text-xs text-amber-200/90 px-2 max-w-sm">
+                        Test reCAPTCHA key in use — set real keys on the backend to remove the red testing banner.
+                      </p>
+                    ) : null}
                   </div>
                 )}
 
@@ -278,7 +381,7 @@ export default function RegisterPage() {
                       onClick={() => setStep('register')}
                       className="w-full text-xs text-white/50 hover:text-white transition-colors py-1 font-medium"
                     >
-                      Change Phone Number
+                      Change registration details
                     </button>
                   </div>
                 </div>
