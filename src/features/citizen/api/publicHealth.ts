@@ -43,8 +43,8 @@ export interface OutbreakNewsItem {
   summary: string;
   url: string;
   publishedAt: string | null;
-  source: "WHO" | "WHO Africa";
-  scope: "GLOBAL" | "AFRICA";
+  source: "WHO" | "WHO Africa" | "Google News";
+  scope: "GLOBAL" | "AFRICA" | "ETHIOPIA";
   diseases: string[];
   countries: string[];
 }

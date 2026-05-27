@@ -312,6 +312,16 @@ function MapAutoFit({ userLocation, facilities }: { userLocation: LiveLocation |
   const map = useMap();
 
   useEffect(() => {
+    // Leaflet can render with an incorrect viewport size after tab/layout changes.
+    // Force size recalculation so tiles fill the whole container.
+    const raf = window.requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 120);
+
     const points: [number, number][] = [];
 
     if (userLocation) {
@@ -322,15 +332,26 @@ function MapAutoFit({ userLocation, facilities }: { userLocation: LiveLocation |
 
     if (points.length === 0) {
       map.setView([9.145, 40.4897], 6);
-      return;
+      return () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(timeoutId);
+      };
     }
 
     if (points.length === 1) {
       map.setView(points[0], userLocation ? 13 : 8);
-      return;
+      return () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(timeoutId);
+      };
     }
 
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 13 });
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeoutId);
+    };
   }, [facilities, map, userLocation]);
 
   return null;
@@ -743,8 +764,8 @@ export default function CitizenPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]">
               <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-lg">
                 <MapLegend />
-                <div className="h-135">
-                  <MapContainer center={[9.145, 40.4897]} zoom={6} scrollWheelZoom className="h-full w-full">
+                <div className="h-104 sm:h-128 lg:h-160">
+                  <MapContainer center={[9.145, 40.4897]} zoom={6} scrollWheelZoom className="h-full w-full" style={{ height: "100%", width: "100%" }}>
                     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <MapAutoFit userLocation={liveLocation} facilities={visibleHealthFacilities} />
 

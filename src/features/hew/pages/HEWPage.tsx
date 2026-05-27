@@ -82,15 +82,25 @@ export default function HEWPage() {
   // Merged reports for display - now filtered by active tab
   const displayReports = useMemo(() => {
     if (activeTab === 'queue') {
-       return queue;
+       return [...queue].sort((a, b) => {
+         const aTime = new Date(a.date || 0).getTime();
+         const bTime = new Date(b.date || 0).getTime();
+         return bTime - aTime;
+       });
     } else {
-       return serverReports.map(r => ({
+       return serverReports
+         .map(r => ({
          ...r,
          status: "archived" as const,
          date: r.timestamp || r.date,
          cases: r.caseCount,
          deaths: r.deathCount,
-       }));
+         }))
+         .sort((a, b) => {
+           const aTime = new Date(a.timestamp || a.createdAt || a.date || 0).getTime();
+           const bTime = new Date(b.timestamp || b.createdAt || b.date || 0).getTime();
+           return bTime - aTime;
+         });
     }
   }, [queue, serverReports, activeTab]);
 

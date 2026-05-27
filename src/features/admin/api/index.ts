@@ -51,7 +51,6 @@ export interface GeoStat {
   reportCount: number;
   latitude: number | null;
   longitude: number | null;
-  healthFacilityName?: string | null;
   /** When set, map uses API risk level (e.g. citizen district map). */
   riskLevel?: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
 }
