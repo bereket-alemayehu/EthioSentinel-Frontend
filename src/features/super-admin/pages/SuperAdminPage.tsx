@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -49,6 +49,7 @@ import {
   type RegionListItem,
   type DiseaseCatalogItem,
 } from "@/features/super-admin/api/catalog";
+import { getHealthFacilities, type HealthFacility } from "@/features/citizen/api/publicHealth";
 import { useAuth } from "@/app/providers/auth/AuthProvider";
 
 const tabs = [
@@ -126,6 +127,13 @@ export default function SuperAdminPage() {
   const regionsQ = useQuery({
     queryKey: ["regions", "list"],
     queryFn: getRegions,
+    staleTime: 5 * 60_000,
+    enabled: tab === "users",
+  });
+
+  const facilitiesQ = useQuery({
+    queryKey: ["health-facilities", "list"],
+    queryFn: getHealthFacilities,
     staleTime: 5 * 60_000,
     enabled: tab === "users",
   });
@@ -321,6 +329,8 @@ export default function SuperAdminPage() {
               busy={createUser.isPending}
               regions={regionsQ.data ?? []}
               regionsLoading={regionsQ.isLoading}
+              healthFacilities={facilitiesQ.data ?? []}
+              healthFacilitiesLoading={facilitiesQ.isLoading}
               onSubmit={(body) => createUser.mutate(body)}
             />
           </CardHeader>
@@ -935,11 +945,15 @@ function RegisterUserButton({
   busy,
   regions,
   regionsLoading,
+  healthFacilities,
+  healthFacilitiesLoading,
   onSubmit,
 }: {
   busy: boolean;
   regions: RegionListItem[];
   regionsLoading: boolean;
+  healthFacilities: HealthFacility[];
+  healthFacilitiesLoading: boolean;
   onSubmit: (body: {
     email: string;
     password: string;
@@ -947,6 +961,7 @@ function RegisterUserButton({
     role: string;
     region: string;
     isActive: boolean;
+    healthFacilityId?: number | null;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -956,6 +971,33 @@ function RegisterUserButton({
   const [region, setRegion] = useState("");
   const [role, setRole] = useState<string>("CITIZEN");
   const [isActive, setIsActive] = useState(true);
+  const [healthFacilityId, setHealthFacilityId] = useState("");
+  const selectedFacility = useMemo(
+    () => healthFacilities.find((item) => String(item.id) === healthFacilityId) ?? null,
+    [healthFacilities, healthFacilityId],
+  );
+
+  const regionFacilities = useMemo(
+    () => healthFacilities.filter((facility) => facility.Region === region),
+    [healthFacilities, region],
+  );
+
+  const [facilityQuery, setFacilityQuery] = useState("");
+  const [showFacilityList, setShowFacilityList] = useState(false);
+
+  useEffect(() => {
+    setHealthFacilityId("");
+    setFacilityQuery("");
+    setShowFacilityList(false);
+  }, [region]);
+
+  useEffect(() => {
+    if (!healthFacilityId) return;
+    const facility = healthFacilities.find((item) => String(item.id) === healthFacilityId);
+    if (facility && facility.Region !== region) {
+      setRegion(facility.Region);
+    }
+  }, [healthFacilityId, healthFacilities, region]);
 
   return (
     <>
@@ -973,11 +1015,24 @@ function RegisterUserButton({
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!region) {
+            const finalRegion = role === "HEW" && selectedFacility ? selectedFacility.Region : region;
+            if (role === "HEW" && !healthFacilityId) {
+              toast.error("Select a health center");
+              return;
+            }
+            if (!finalRegion) {
               toast.error("Select a region");
               return;
             }
-            onSubmit({ email, username, password, role, region, isActive });
+            onSubmit({
+              email,
+              username,
+              password,
+              role,
+              region: finalRegion,
+              isActive,
+              healthFacilityId: healthFacilityId ? Number(healthFacilityId) : null,
+            });
             setOpen(false);
             setPassword("");
           }}
@@ -992,14 +1047,82 @@ function RegisterUserButton({
             required
             minLength={8}
           />
-          <RegionSelect
-            label="Region"
-            value={region}
-            onChange={setRegion}
-            regions={regions}
-            disabled={regionsLoading}
-            required
-          />
+          {role === "HEW" ? (
+            <div className="space-y-3 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/30 p-3">
+              <RegionSelect
+                label="Region"
+                value={region}
+                onChange={setRegion}
+                regions={regions}
+                disabled={regionsLoading}
+                required
+              />
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500 uppercase">Health center</label>
+                <div className="relative">
+                  <input
+                    value={facilityQuery || (selectedFacility ? selectedFacility.HF_Name : "")}
+                    onChange={(e) => setFacilityQuery(e.target.value)}
+                    onFocus={() => setShowFacilityList(true)}
+                    placeholder={!region ? "Select region first" : "Search health centers by name or district"}
+                    disabled={!region || healthFacilitiesLoading}
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm disabled:opacity-60"
+                  />
+
+                  {showFacilityList && region && (
+                    <ul className="absolute left-0 top-full z-50 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:bg-slate-900">
+                      {regionFacilities
+                        .filter((f) => {
+                          const q = facilityQuery.trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            f.HF_Name.toLowerCase().includes(q) ||
+                            (f.Woreda || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .slice(0, 200)
+                        .map((facility) => (
+                          <li
+                            key={facility.id}
+                            onMouseDown={(ev) => {
+                              ev.preventDefault();
+                              setHealthFacilityId(String(facility.id));
+                              setFacilityQuery(facility.HF_Name);
+                              setShowFacilityList(false);
+                            }}
+                            className="cursor-pointer px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >
+                            <div className="font-semibold">{facility.HF_Name}</div>
+                            <div className="text-xs text-slate-500">{facility.Woreda} • {facility.Zone}</div>
+                          </li>
+                        ))}
+                      {regionFacilities.filter((f) => {
+                        const q = facilityQuery.trim().toLowerCase();
+                        return !q || f.HF_Name.toLowerCase().includes(q) || (f.Woreda || "").toLowerCase().includes(q);
+                      }).length === 0 && (
+                        <li className="px-3 py-2 text-xs text-slate-500">No health centers found</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+                {selectedFacility && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    Assigning {selectedFacility.HF_Name} — {selectedFacility.Region} · {selectedFacility.Woreda}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <RegionSelect
+              label="Region"
+              value={region}
+              onChange={setRegion}
+              regions={regions}
+              disabled={regionsLoading}
+              required
+            />
+          )}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-500 uppercase">Role</label>
             <select

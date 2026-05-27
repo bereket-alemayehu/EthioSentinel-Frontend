@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Stethoscope,
   Activity,
@@ -12,6 +13,7 @@ import {
   type HewDraftReportInput,
   type HewQueuedReport,
 } from "@/features/reporting/services/offlineStorage";
+import { getHealthFacilities, type HealthFacility } from "@/features/citizen/api/publicHealth";
 import { 
   useReportMutation, 
   useSyncReportsMutation, 
@@ -49,6 +51,11 @@ export default function HEWPage() {
   const updateServerMutation = useUpdateReportMutation();
   const deleteServerMutation = useDeleteReportMutation();
   const { data: diseaseList = [] } = useDiseases();
+  const { data: healthFacilities = [] } = useQuery({
+    queryKey: ["health-facilities", "hew-page"],
+    queryFn: getHealthFacilities,
+    staleTime: 10 * 60_000,
+  });
   const reportsContainerRef = useRef<HTMLDivElement>(null);
   const todayDate = useMemo(() => new Date().toLocaleDateString("en-CA"), []);
 
@@ -126,10 +133,19 @@ export default function HEWPage() {
     return queuedToday + archivedTodayCount;
   }, [queue, serverResult?.dailyCount]);
 
+  const facilityLabel = useMemo(() => {
+    if (!user?.healthFacilityId) return "";
+    const facility = healthFacilities.find(
+      (item: HealthFacility) => item.id === user.healthFacilityId,
+    );
+    if (!facility) return "";
+    return facility.HF_Name;
+  }, [healthFacilities, user?.healthFacilityId]);
+
   const activeSessionInfo = useMemo(() => ({
     userName: user?.username || "User",
-    district: user?.assignedDistrict || "General",
-  }), [user]);
+    location: facilityLabel || user?.assignedDistrict || "General",
+  }), [user, facilityLabel]);
 
   async function refreshQueue() {
     const current = await getAllQueuedHewReports();
@@ -336,6 +352,7 @@ export default function HEWPage() {
       <div className="w-full px-4 sm:px-10 -mt-20 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         <HEWDashboardSidebar 
           user={user}
+          facilityLabel={facilityLabel}
           t={t}
           isOnline={isOnline}
           pendingCount={pendingCount}

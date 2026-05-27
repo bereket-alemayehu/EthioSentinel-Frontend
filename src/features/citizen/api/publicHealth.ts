@@ -49,6 +49,32 @@ export interface OutbreakNewsItem {
   countries: string[];
 }
 
+export interface HealthFacility {
+  id: number;
+  HF_Name: string;
+  HF_Type: string;
+  Region: string;
+  Zone: string;
+  Woreda: string;
+  Y: number | null; // latitude
+  X: number | null; // longitude
+  regionId: number | null;
+  districtId: number | null;
+  Status: string | null;
+}
+
+export interface HealthFacilityWithIndicators extends HealthFacility {
+  totalCases: number;
+  totalDeaths: number;
+  totalReports: number;
+  riskLevel: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+  topDiseases: Array<{
+    diseaseType: string;
+    cases: number;
+    reports: number;
+  }>;
+}
+
 export const getEthiopiaRegionalStatus = async (
   days = 30,
 ): Promise<EthiopiaRegionalStatusResponse> => {
@@ -62,6 +88,23 @@ export const getEthiopiaRegionalStatus = async (
 export const getOutbreakNews = async (): Promise<OutbreakNewsItem[]> => {
   const response = await api.get<{ data: OutbreakNewsItem[] }>(
     "/public-health/outbreak-news",
+  );
+  return response.data.data;
+};
+
+export const getHealthFacilities = async (): Promise<HealthFacility[]> => {
+  const response = await api.get<{ data: HealthFacility[] }>(
+    "/health/facilities",
+  );
+  return response.data.data;
+};
+
+export const getHealthFacilitiesWithIndicators = async (
+  days = 30,
+): Promise<HealthFacilityWithIndicators[]> => {
+  const response = await api.get<{ data: HealthFacilityWithIndicators[] }>(
+    "/health/facilities/with-indicators",
+    { params: { days } },
   );
   return response.data.data;
 };

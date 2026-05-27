@@ -11,6 +11,7 @@ import { Button } from "@/shared/components/ui/button";
 
 interface HEWDashboardSidebarProps {
   user: any;
+    facilityLabel?: string;
   t: any;
   isOnline: boolean;
   pendingCount: number;
@@ -20,6 +21,7 @@ interface HEWDashboardSidebarProps {
 
 export const HEWDashboardSidebar: React.FC<HEWDashboardSidebarProps> = ({
   user,
+    facilityLabel,
   t,
   isOnline,
   pendingCount,
@@ -44,7 +46,7 @@ export const HEWDashboardSidebar: React.FC<HEWDashboardSidebarProps> = ({
                         <p className="text-xs text-light-500 font-black uppercase tracking-[0.2em]">{t("healthWorker")}</p>
                         <div className="flex items-center gap-2 text-[10px] font-black text-primary-500 uppercase tracking-widest bg-primary-500/10 px-2 py-1 rounded-md w-fit">
                             <MapPin className="w-3 h-3" />
-                            {user?.assignedDistrict || t("notAssigned")}
+                            {facilityLabel || user?.assignedDistrict || t("notAssigned")}
                         </div>
                     </div>
                 </div>

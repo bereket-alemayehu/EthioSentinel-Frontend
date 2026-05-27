@@ -102,6 +102,7 @@ export async function createSuperAdminUser(body: {
   role: string;
   region: string;
   assignedDistrict?: string | null;
+  healthFacilityId?: number | null;
   phoneNumber?: string | null;
   isActive?: boolean;
 }): Promise<GovernanceUser> {
