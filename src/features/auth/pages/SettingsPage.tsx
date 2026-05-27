@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/providers/auth/AuthProvider";
 import { changePasswordApi } from "@/features/auth/api/auth";
 import { toast } from "sonner";
+import { PasswordVisibilityToggle } from "@/shared/components/ui/PasswordVisibilityToggle";
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -28,6 +29,8 @@ export default function SettingsPage() {
   const [notifOn, setNotifOn] = useState(areNotificationsEnabled);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [pwdModalOpen, setPwdModalOpen] = useState(false);
   const [pwdBusy, setPwdBusy] = useState(false);
 
@@ -151,26 +154,42 @@ export default function SettingsPage() {
                   <label className="text-xs font-semibold text-muted-foreground uppercase">
                     {t("currentPasswordLabel")}
                   </label>
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showCurrentPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="pr-11"
+                    />
+                    <PasswordVisibilityToggle
+                      visible={showCurrentPassword}
+                      onToggle={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="right-3"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase">
                     {t("newPasswordLabel")}
                   </label>
-                  <Input
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={8}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      className="pr-11"
+                    />
+                    <PasswordVisibilityToggle
+                      visible={showNewPassword}
+                      onToggle={() => setShowNewPassword(!showNewPassword)}
+                      className="right-3"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button

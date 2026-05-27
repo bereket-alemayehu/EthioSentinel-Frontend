@@ -29,15 +29,17 @@ export const useDeleteReportMutation = () => {
   });
 };
 
-export const useReportMutation = () => {
+export const useReportMutation = (reporterId?: string) => {
   return useMutation({
-    mutationFn: postReport,
+    mutationFn: (report: Parameters<typeof postReport>[0]) =>
+      postReport(report, reporterId),
   });
 };
 
-export const useSyncReportsMutation = () => {
+export const useSyncReportsMutation = (reporterId?: string) => {
   return useMutation({
-    mutationFn: () => syncQueuedHewReports(postReport),
+    mutationFn: () =>
+      syncQueuedHewReports((report) => postReport(report, reporterId)),
   });
 };
 

@@ -4,8 +4,6 @@ import {
   User,
   Lock, 
   ArrowRight, 
-  Eye, 
-  EyeOff, 
   ShieldCheck,
   Stethoscope,
   HeartPulse
@@ -16,9 +14,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import ReCAPTCHA from 'react-google-recaptcha';
+import type ReCAPTCHA from 'react-google-recaptcha';
 import { useOnlineStatus } from '@/shared/hooks/useOnlineStatus';
-import { getRecaptchaSiteKey } from '@/shared/lib/recaptcha';
+import { useRecaptchaSiteKey } from '@/shared/hooks/useRecaptchaSiteKey';
+import { AuthRecaptcha } from '@/features/auth/components/AuthRecaptcha';
+import { PasswordVisibilityToggle } from '@/shared/components/ui/PasswordVisibilityToggle';
+import { authFieldIconClass, authFieldIconSize } from '@/features/auth/authFieldStyles';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -35,21 +36,35 @@ export default function LoginPage() {
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(
     !navigator.onLine ? 'OFFLINE' : null
   );
-  const recaptchaSiteKey = getRecaptchaSiteKey();
+  const { siteKey: recaptchaSiteKey, loading: recaptchaLoading, ready: recaptchaReady, isConfigured: recaptchaConfigured, isTestKey } =
+    useRecaptchaSiteKey();
 
-  // Sync token when connectivity changes
+  const handleRecaptchaToken = React.useCallback((token: string | null) => {
+    setRecaptchaToken(token);
+  }, []);
+
+  // Sync token when connectivity changes (only on transitions, not every render)
+  const prevOnlineRef = React.useRef(isOnline);
   useEffect(() => {
+    if (prevOnlineRef.current === isOnline) return;
+    prevOnlineRef.current = isOnline;
     if (!isOnline) {
       recaptchaRef.current?.reset();
       setRecaptchaToken('OFFLINE');
     } else {
-      // Coming back online: require the user to solve CAPTCHA again
       setRecaptchaToken(null);
     }
   }, [isOnline]);
 
   const navigate = useNavigate();
-  const { login, isLoading, error, user } = useAuth();
+  const { login, isLoading, error, user, clearError } = useAuth();
+
+  const isNetworkLoginError =
+    Boolean(error) &&
+    (error.includes("Cannot reach") ||
+      error.includes("offline") ||
+      error.includes("internet") ||
+      error.includes("server"));
 
   // Role-based redirection logic
   React.useEffect(() => {
@@ -89,10 +104,11 @@ export default function LoginPage() {
     }
     try {
       await login(formData.email, formData.password, recaptchaToken);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[LoginPage] Login error:", err);
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
+      // Inline error from AuthProvider `error` is shown above the form
     }
   };
 
@@ -137,12 +153,25 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5 relative">
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-2 overflow-hidden"
+                animate={{ opacity: 1, height: "auto" }}
+                className={
+                  isNetworkLoginError
+                    ? "bg-amber-500/15 border border-amber-400/30 rounded-xl p-3 mb-2 overflow-hidden"
+                    : "bg-red-500/15 border border-red-400/30 rounded-xl p-3 mb-2 overflow-hidden"
+                }
+                role="alert"
               >
-                <p className="text-xs text-red-200 font-medium text-center">{error}</p>
+                <p
+                  className={
+                    isNetworkLoginError
+                      ? "text-sm text-amber-50 font-semibold text-center leading-relaxed"
+                      : "text-sm text-red-50 font-semibold text-center leading-relaxed"
+                  }
+                >
+                  {error}
+                </p>
               </motion.div>
             )}
 
@@ -150,8 +179,8 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-white/50 uppercase ml-1 tracking-wider">{t('emailOrPhone')}</label>
                 <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-white/80 transition-colors">
-                    <User className="w-4.5 h-4.5" />
+                  <div className={authFieldIconClass}>
+                    <User className={authFieldIconSize} />
                   </div>
                   <Input 
                     type="text" 
@@ -159,7 +188,10 @@ export default function LoginPage() {
                     required
                     className="h-12 pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-white/10 focus:border-white/30 transition-all rounded-xl no-focus"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => {
+                      clearError();
+                      setFormData({ ...formData, email: e.target.value });
+                    }}
                   />
                 </div>
               </div>
@@ -172,8 +204,8 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-white/80 transition-colors">
-                    <Lock className="w-4.5 h-4.5" />
+                  <div className={authFieldIconClass}>
+                    <Lock className={authFieldIconSize} />
                   </div>
                   <Input 
                     type={showPassword ? "text" : "password"} 
@@ -181,15 +213,16 @@ export default function LoginPage() {
                     required
                     className="h-12 pl-12 pr-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:bg-white/10 focus:border-white/30 transition-all rounded-xl no-focus"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) => {
+                      clearError();
+                      setFormData({ ...formData, password: e.target.value });
+                    }}
                   />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                  </button>
+                  <PasswordVisibilityToggle
+                    visible={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                    className="right-4"
+                  />
                 </div>
               </div>
             </div>
@@ -209,20 +242,31 @@ export default function LoginPage() {
 
             {isOnline && (
               <div className="flex flex-col items-center justify-center mt-2 gap-2">
-                {recaptchaSiteKey ? (
-                  <ReCAPTCHA
+                {recaptchaLoading ? (
+                  <p className="text-center text-xs text-white/60 px-2">Loading security check…</p>
+                ) : recaptchaReady && recaptchaConfigured ? (
+                  <AuthRecaptcha
                     ref={recaptchaRef}
-                    sitekey={recaptchaSiteKey}
-                    onChange={(token) => setRecaptchaToken(token)}
-                    onExpired={() => setRecaptchaToken(null)}
-                    onErrored={() => setRecaptchaToken('OFFLINE')} // Google unreachable → bypass
-                    theme="light"
+                    siteKey={recaptchaSiteKey}
+                    onTokenChange={handleRecaptchaToken}
                   />
                 ) : (
-                  <p className="text-center text-xs text-amber-100/95 px-2">
-                    reCAPTCHA is not configured. Set <code className="rounded bg-black/20 px-1">VITE_RECAPTCHA_SITE_KEY</code> in <code className="rounded bg-black/20 px-1">.env</code> and rebuild.
+                  <p className="text-center text-xs text-amber-100/95 px-2 max-w-sm">
+                    reCAPTCHA is not configured. In <code className="rounded bg-black/20 px-1">ethiosentinel-backend/.env</code> set{' '}
+                    <code className="rounded bg-black/20 px-1">RECAPTCHA_SITE_KEY</code> (Site key) and{' '}
+                    <code className="rounded bg-black/20 px-1">SITESECRET</code> (Secret key) from{' '}
+                    <a href="https://www.google.com/recaptcha/admin" className="underline" target="_blank" rel="noreferrer">
+                      Google reCAPTCHA admin
+                    </a>
+                    , then restart the backend.
                   </p>
                 )}
+                {isTestKey ? (
+                  <p className="text-center text-xs text-amber-200/90 px-2 max-w-sm">
+                    Using Google&apos;s test key — set real <code className="rounded bg-black/20 px-1">RECAPTCHA_SITE_KEY</code> +{' '}
+                    <code className="rounded bg-black/20 px-1">SITESECRET</code> on the backend to remove the red testing banner.
+                  </p>
+                ) : null}
               </div>
             )}
 

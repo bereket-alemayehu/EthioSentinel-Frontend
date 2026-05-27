@@ -12,6 +12,9 @@ import {
 import type { User, AuthContextType } from "@/features/auth/types";
 import type { UserRole } from "@/shared/types";
 import { toast } from "sonner";
+import { formatLoginErrorMessage } from "@/features/auth/utils/loginErrors";
+import { isNetworkError } from "@/shared/lib/apiErrors";
+import type { AxiosError } from "axios";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -40,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await getMeApi();
         setUser(userData);
         setStoredUser(userData);
-      } catch (err) {
-        console.log("[Auth] Session restoration failed (likely offline or expired)");
+      } catch {
+        // No session cookie — normal on login/register before sign-in
       } finally {
         setIsLoading(false);
       }
@@ -84,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!navigator.onLine) {
       const success = await tryOfflineLogin("Browser reports offline");
       if (success) return;
-      const msg = "No internet connection and no cached credentials found for this account.";
+      const msg = formatLoginErrorMessage("", undefined, { offline: true });
       setError(msg);
       setIsLoading(false);
       throw new Error(msg);
@@ -101,19 +104,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStoredUser(userData);
       if (userData.role) setStoredRole(userData.role);
       setUser(userData);
-    } catch (err: any) {
-      // ── 3. Fallback to offline if network is unreachable ─────────────────
-      const isNetworkError = !err.response || err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message === 'Network Error';
-      
-      if (isNetworkError) {
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const unreachable = isNetworkError(axiosErr);
+
+      if (unreachable) {
         const success = await tryOfflineLogin("Network request failed");
         if (success) return;
-        const msg = "Network error and no offline credentials found.";
+        const msg = formatLoginErrorMessage("", undefined, {
+          networkUnreachable: true,
+        });
         setError(msg);
         throw new Error(msg);
       }
 
-      const message = err.response?.data?.message || err.message || "Failed to sign in. Please check your credentials.";
+      const rawMessage =
+        axiosErr.response?.data?.message ||
+        (err instanceof Error ? err.message : null) ||
+        "Failed to sign in.";
+      const message = formatLoginErrorMessage(
+        rawMessage,
+        axiosErr.response?.status,
+      );
       setError(message);
       throw new Error(message);
     } finally {

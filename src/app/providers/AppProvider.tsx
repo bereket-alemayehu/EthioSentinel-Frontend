@@ -14,7 +14,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <AuthProvider>
           {children}
-          <Toaster position="top-center" richColors />
+          <Toaster position="top-center" richColors closeButton />
         </AuthProvider>
       </ThemeProvider>
     </QueryProvider>

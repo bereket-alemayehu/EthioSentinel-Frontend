@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/app/providers/auth/AuthProvider";
 
 /**
- * `/dashboard` is used by the navbar for operational roles; citizens use home/citizen routes.
+ * Legacy `/dashboard` URL redirects to the role home (`/admin`, `/hew`, or `/citizen`).
  */
 export function DashboardRedirect() {
   const { user, isLoading } = useAuth();
