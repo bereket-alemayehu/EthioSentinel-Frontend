@@ -14,6 +14,7 @@ export const postReport = async (
     reportDate: report.date,
     caseCount: report.cases,
     deathCount: report.deaths,
+    healthFacilityId: report.healthFacilityId,
     ...(reporterId ? { reporterId } : {}),
   });
 };
@@ -30,7 +31,7 @@ export const getReports = async (page: number = 1, limit: number = 10): Promise<
   return response.data.data;
 };
 
-export const updateServerReport = async ({ id, ...data }: { id: string; diseaseType?: string; diseaseId?: number; district?: string; cases?: number; deaths?: number; date?: string }): Promise<void> => {
+export const updateServerReport = async ({ id, ...data }: { id: string; diseaseType?: string; diseaseId?: number; district?: string; cases?: number; deaths?: number; date?: string; healthFacilityId?: number }): Promise<void> => {
   await api.patch(`/reports/${id}`, {
     diseaseType: data.diseaseType,
     diseaseId: data.diseaseId,
@@ -38,6 +39,7 @@ export const updateServerReport = async ({ id, ...data }: { id: string; diseaseT
     caseCount: data.cases,
     deathCount: data.deaths,
     reportDate: data.date,
+    healthFacilityId: data.healthFacilityId,
   });
 };
 

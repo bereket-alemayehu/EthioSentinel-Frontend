@@ -73,6 +73,7 @@ export default function HEWPage() {
     cases: 0,
     deaths: 0,
     date: new Date().toISOString().slice(0, 10),
+    healthFacilityId: user?.healthFacilityId || undefined,
   });
 
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -103,13 +104,18 @@ export default function HEWPage() {
     cases: 0,
     deaths: 0,
     date: "",
+    healthFacilityId: undefined,
   });
 
   const isSyncing = syncMutation.isPending;
 
   useEffect(() => {
-    if (user?.assignedDistrict) {
-      setForm(prev => ({ ...prev, district: user.assignedDistrict || "" }));
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        district: user.assignedDistrict || "",
+        healthFacilityId: user.healthFacilityId || undefined,
+      }));
     }
   }, [user]);
 
@@ -258,6 +264,7 @@ export default function HEWPage() {
       cases: item.cases || item.caseCount,
       deaths: item.deaths || item.deathCount,
       date: formattedDate,
+      healthFacilityId: item.healthFacilityId || item.healthFacility?.id || undefined,
     });
     setIsEditModalOpen(true);
   };
@@ -369,6 +376,7 @@ export default function HEWPage() {
               diseaseOptions={diseaseOptions}
               isOnline={isOnline}
               reportMutationPending={reportMutation.isPending}
+              facilityLabel={facilityLabel}
             />
             
             <HEWSummaryCard 

@@ -13,6 +13,7 @@ interface ReportingFormProps {
   diseaseOptions: any[];
   isOnline: boolean;
   reportMutationPending: boolean;
+  facilityLabel?: string;
 }
 
 export const ReportingForm: React.FC<ReportingFormProps> = ({
@@ -22,7 +23,8 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
   onSubmit,
   diseaseOptions,
   isOnline,
-  reportMutationPending
+  reportMutationPending,
+  facilityLabel,
 }) => {
   const today = new Date().toLocaleDateString("en-CA");
 
@@ -63,7 +65,18 @@ export const ReportingForm: React.FC<ReportingFormProps> = ({
                     />
                 </div>
 
-
+                {facilityLabel && (
+                  <div className="space-y-3">
+                      <label className="text-[10px] font-black text-light-500 dark:text-light-700 uppercase tracking-widest ml-1">Reporting Health Facility</label>
+                      <Input 
+                          type="text"
+                          value={facilityLabel}
+                          readOnly
+                          disabled
+                          className="h-14 bg-light-700/20 dark:bg-white/5 border-slate-200 dark:border-white/10 rounded-2xl font-black p-6 text-lg cursor-not-allowed opacity-80"
+                      />
+                  </div>
+                )}
 
                 <div className="space-y-3">
                     <label className="text-[10px] font-black text-light-500 dark:text-light-700 uppercase tracking-widest ml-1">Observation Date</label>
