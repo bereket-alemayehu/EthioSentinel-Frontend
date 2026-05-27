@@ -11,7 +11,6 @@ import type { District } from "@/features/advisory/types";
 import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
 import { syncGeolocationFromDeviceApi } from "@/features/auth/api/auth";
-import { RegionDistrictMap } from "../components/RegionDistrictMap";
 
 type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
 
@@ -369,7 +368,6 @@ export default function CitizenPage() {
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("");
-  const [expandedRegionId, setExpandedRegionId] = useState<number | null>(null);
   const [regionQuery, setRegionQuery] = useState<string>("");
   const [districtQuery, setDistrictQuery] = useState<string>("");
   const [showRegionList, setShowRegionList] = useState(false);
@@ -390,16 +388,10 @@ export default function CitizenPage() {
     }
   }, [regions, selectedRegionId]);
 
-  // Keep expanded region card in sync with header region selector
   useEffect(() => {
-    if (selectedRegionId) {
-      setExpandedRegionId(Number(selectedRegionId));
-    }
-  }, [selectedRegionId]);
-
-  useEffect(() => {
-    setRegionQuery(selectedRegion?.name ?? "");
-  }, [/* no-op placeholder until selectedRegion declared */]);
+    const currentRegion = regions.find((item) => String(item.id) === selectedRegionId);
+    setRegionQuery(currentRegion?.name ?? "");
+  }, [regions, selectedRegionId]);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) {
@@ -883,8 +875,6 @@ export default function CitizenPage() {
                               </div>
                             ))}
                           </div>
-
-                          <RegionDistrictMap region={region} />
                         </div>
                       )}
 

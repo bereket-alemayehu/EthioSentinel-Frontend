@@ -2,7 +2,9 @@ import { api } from '@/shared/lib/axios';
 import type { AlertItem, AdminAdvisoryItem } from '../types';
 
 export const getAlerts = async (): Promise<AlertItem[]> => {
-  const response = await api.get<{ data: AlertItem[] }>('/alerts');
+  const response = await api.get<{ data: AlertItem[] }>('/alerts', {
+    params: { pending: true }
+  });
   return response.data.data;
 };
 
