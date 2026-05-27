@@ -11,7 +11,7 @@ export type AlertItem = {
   targetZone?: string;
   aiSuggested?: boolean;
   sourceReportId?: string | null;
-  status: "Draft" | "Approved";
+  status: "Pending" | "Active" | "Rejected";
   createdAt?: string;
 };
 

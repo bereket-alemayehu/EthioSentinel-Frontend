@@ -4,7 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 
 type AlertActionsProps = {
   variant: "alert";
-  status: "Draft" | "Approved";
+  status: "Pending" | "Active" | "Rejected";
   isPending: boolean;
   pendingAction?: "approve" | "reject";
   onApprove: () => void;
@@ -32,7 +32,7 @@ export function AdminApprovalActions(props: AdminApprovalActionsProps) {
   const { isPending, pendingAction } = props;
 
   if (props.variant === "alert") {
-    if (props.status !== "Draft") {
+    if (props.status !== "Pending") {
       return null;
     }
 

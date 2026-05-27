@@ -78,7 +78,7 @@ const router = createBrowserRouter([
       {
         path: 'hew',
         element: (
-          <RoleGate allowedRoles={['hew', 'admin', 'super_admin']}>
+          <RoleGate allowedRoles={['hew']}>
             <Suspense fallback={<PageLoader />}>
               <HEWPage />
             </Suspense>

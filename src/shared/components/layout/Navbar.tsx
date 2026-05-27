@@ -58,9 +58,9 @@ export function Navbar() {
       name: t("citizenService"),
       href: "/citizen",
       icon: HeartPulse,
-      roles: ["hew", "admin", "super_admin"],
+      roles: ["citizen"],
     },
-    { name: t("healthWorker"), href: "/hew", icon: Search, roles: ["hew", "admin", "super_admin"] },
+    { name: t("healthWorker"), href: "/hew", icon: Search, roles: ["hew"] },
     { name: t("adminPanel"), href: "/admin", icon: Settings, roles: ["admin", "super_admin"] },
     { name: t("superAdminPanel"), href: "/super-admin", icon: Shield, roles: ["super_admin"] },
   ]

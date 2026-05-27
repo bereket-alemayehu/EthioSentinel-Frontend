@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAlerts, useUpdateAlertStatusMutation, useGeoStats } from "@/features/admin/hooks/useAdmin";
+import { useGeoStats } from "@/features/admin/hooks/useAdmin";
 import { useAdvisoryDrafts, useApprovedAdvisories, useUpdateAdvisoryStatusMutation } from "@/features/admin/hooks/useAdvisoryActions";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Shield } from "lucide-react";
@@ -8,22 +8,20 @@ import { useAuth } from "@/app/providers/auth/AuthProvider";
 import { Button } from "@/shared/components/ui/button";
 
 import { AdminHeader, type AdminTab } from "@/features/admin/components/AdminHeader";
-import { AlertApprovals } from "@/features/admin/components/AlertApprovals";
 import { AdvisoryManagement } from "@/features/admin/components/AdvisoryManagement";
 import { MapIntelligence } from "@/features/admin/components/MapIntelligence";
 import { AnomalyAnalysis } from "@/features/admin/components/AnomalyAnalysis";
 import { AdvisoryDetailModal } from "@/features/admin/components/AdvisoryDetailModal";
 import { aggregateByDistrict } from "@/features/admin/utils";
-import { getApiErrorMessage } from "@/shared/lib/apiErrors";
-import { toast } from "sonner";
+// removed alert approval UI: no alert-specific action helpers required
 
-const ADMIN_TABS: AdminTab[] = ["alerts", "advisories", "map", "anomaly"];
+const ADMIN_TABS: AdminTab[] = ["advisories", "map", "anomaly"];
 
 function tabFromQuery(value: string | null): AdminTab {
   if (value && ADMIN_TABS.includes(value as AdminTab)) {
     return value as AdminTab;
   }
-  return "alerts";
+  return "advisories";
 }
 
 export default function AdminPage() {
@@ -49,11 +47,7 @@ export default function AdminPage() {
       { replace: true },
     );
   };
-  const {
-    data: alerts = [],
-    isLoading: loading,
-    error: queryError,
-  } = useAlerts();
+  const { data: geoStats = [], isLoading: geoLoading } = useGeoStats();
   const [advisorySubTab, setAdvisorySubTab] = useState<"pending" | "approved">(
     "pending"
   );
@@ -70,20 +64,8 @@ export default function AdminPage() {
     useAdvisoryDrafts();
   const { data: approvedAdvisories = [], isLoading: approvedLoading } =
     useApprovedAdvisories();
-  const { data: geoStats = [], isLoading: geoLoading } = useGeoStats();
-  const updateMutation = useUpdateAlertStatusMutation();
   const updateAdvisoryMutation = useUpdateAdvisoryStatusMutation();
 
-  const handleUpdate = async (
-    id: number | string,
-    action: "approve" | "reject"
-  ) => {
-    try {
-      await updateMutation.mutateAsync({ id, action });
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, t("actionFailed")));
-    }
-  };
 
   const handleAdvisoryUpdate = async (
     id: string,
@@ -96,10 +78,9 @@ export default function AdminPage() {
     }
   };
 
-  const error =
-    queryError?.message || updateMutation.error?.message || "";
-  const actionLoadingId = updateMutation.isPending
-    ? String(updateMutation.variables?.id)
+  const error = updateAdvisoryMutation.error?.message || "";
+  const actionLoadingId = updateAdvisoryMutation.isPending
+    ? String(updateAdvisoryMutation.variables?.id)
     : null;
 
   const totalReports = geoStats.reduce((acc, c) => acc + c.reportCount, 0);
@@ -139,17 +120,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── TAB: ALERT APPROVALS ───────────────────────────────────────── */}
-      {activeTab === "alerts" && (
-        <AlertApprovals
-          alerts={alerts.filter((a) => a.status === "Draft")}
-          loading={loading}
-          handleUpdate={handleUpdate}
-          actionLoadingId={actionLoadingId}
-          updateAction={updateMutation.variables?.action as any}
-          t={t}
-        />
-      )}
+      {/* ALERT approvals removed — alerts are not approved via this UI anymore */}
 
       {/* ── TAB: ADVISORY MANAGEMENT ───────────────────────────────────── */}
       {activeTab === "advisories" && (

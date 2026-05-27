@@ -56,7 +56,7 @@ export function AlertApprovals({
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-auto max-h-[720px]">
+          <div className="overflow-auto max-h-180">
             <table className="w-full">
               <thead className="bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-xl border-b dark:border-slate-800 z-10">
                 <tr className="text-left">
@@ -159,20 +159,28 @@ export function AlertApprovals({
                           <div
                             className={cn(
                               "inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide",
-                              alert.status === "Approved"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-amber-50 text-amber-700",
+                                alert.status === "Active"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : alert.status === "Rejected"
+                                    ? "bg-red-50 text-red-700"
+                                    : "bg-amber-50 text-amber-700",
                             )}
                           >
                             <span
                               className={cn(
                                 "w-1.5 h-1.5 rounded-full",
-                                alert.status === "Approved" ? "bg-emerald-500" : "bg-amber-500",
+                                alert.status === "Active"
+                                  ? "bg-emerald-500"
+                                  : alert.status === "Rejected"
+                                    ? "bg-red-500"
+                                    : "bg-amber-500",
                               )}
                             />
-                            {alert.status === "Approved"
+                            {alert.status === "Active"
                               ? t("authorizedStatus")
-                              : t("awaitingReview")}
+                              : alert.status === "Rejected"
+                                ? t("rejectedStatus")
+                                : t("awaitingReview")}
                           </div>
                         </td>
                         <td className="px-8 py-6 text-right" onClick={(e) => e.stopPropagation()}>
@@ -185,7 +193,7 @@ export function AlertApprovals({
                             >
                               <Eye className="w-5 h-5" />
                             </button>
-                            {alert.status === "Draft" ? (
+                            {alert.status === "Pending" ? (
                               <>
                                 <button
                                   type="button"

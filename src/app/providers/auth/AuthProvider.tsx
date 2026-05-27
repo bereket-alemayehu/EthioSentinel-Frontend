@@ -27,8 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const cached = getStoredUser();
-    if (cached?.role && !window.localStorage.getItem("ethio-role")) {
-      setStoredRole(String(cached.role).toLowerCase() as UserRole);
+    if (cached) {
+      const normalized = cached.role ? { ...cached, role: String(cached.role).toLowerCase() } : cached;
+      setStoredUser(normalized);
+      if (normalized.role) setStoredRole(normalized.role);
+      setUser(normalized);
     }
   }, []);
 
@@ -41,8 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       try {
         const userData = await getMeApi();
-        setUser(userData);
-        setStoredUser(userData);
+        const normalized = userData && userData.role ? { ...userData, role: String(userData.role).toLowerCase() } : userData;
+        setUser(normalized);
+        setStoredUser(normalized);
       } catch {
         // No session cookie — normal on login/register before sign-in
       } finally {
@@ -64,12 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (offlineUser) {
           console.log(`[Auth] Offline login success for ${offlineUser.username}`);
           
+          const normalizedOffline = offlineUser && offlineUser.role ? { ...offlineUser, role: String(offlineUser.role).toLowerCase() } : offlineUser;
           // 1. Update Persistent Storage
-          setStoredUser(offlineUser);
-          if (offlineUser.role) setStoredRole(offlineUser.role);
+          setStoredUser(normalizedOffline);
+          if (normalizedOffline.role) setStoredRole(normalizedOffline.role);
           
           // 2. Update React State
-          setUser(offlineUser);
+          setUser(normalizedOffline);
           setIsLoading(false);
           
           toast.info("Offline Login Successful", {
@@ -101,9 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await saveOfflineCredentials(userData, password);
 
       // Finalize state
-      setStoredUser(userData);
-      if (userData.role) setStoredRole(userData.role);
-      setUser(userData);
+      const normalizedUser = userData && userData.role ? { ...userData, role: String(userData.role).toLowerCase() } : userData;
+      setStoredUser(normalizedUser);
+      if (normalizedUser.role) setStoredRole(normalizedUser.role);
+      setUser(normalizedUser);
     } catch (err: unknown) {
       const axiosErr = err as AxiosError<{ message?: string }>;
       const unreachable = isNetworkError(axiosErr);

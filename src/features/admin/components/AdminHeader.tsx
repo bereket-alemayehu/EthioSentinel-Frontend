@@ -1,7 +1,7 @@
-import { ShieldCheck, Bell, FileText, Map as MapIcon, Activity } from "lucide-react";
+import { ShieldCheck, FileText, Map as MapIcon, Activity } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
-export type AdminTab = "alerts" | "advisories" | "map" | "anomaly";
+export type AdminTab = "advisories" | "map" | "anomaly";
 
 interface AdminHeaderProps {
   activeTab: AdminTab;
@@ -29,10 +29,9 @@ export function AdminHeader({ activeTab, setActiveTab, t }: AdminHeaderProps) {
 
       {/* Tab switcher */}
       <div className="flex flex-wrap bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-sm gap-1.5">
-        {(["alerts", "advisories", "map", "anomaly"] as const).map((tab) => {
+        {(["advisories", "map", "anomaly"] as const).map((tab) => {
           const isActive = activeTab === tab;
-          let Icon = Bell;
-          if (tab === "advisories") Icon = FileText;
+          let Icon = FileText;
           if (tab === "map") Icon = MapIcon;
           if (tab === "anomaly") Icon = Activity;
 
@@ -49,13 +48,11 @@ export function AdminHeader({ activeTab, setActiveTab, t }: AdminHeaderProps) {
               )}
             >
               <Icon className={cn("w-4.5 h-4.5 transition-transform", isActive ? "scale-110" : "")} />
-              {tab === "alerts"
-                ? t("alertApprovals")
-                : tab === "advisories"
-                  ? t("advisoriesAdmin")
-                  : tab === "map"
-                    ? t("diseaseHeatmap")
-                    : t("anomalyAnalysis")}
+              {tab === "advisories"
+                ? t("advisoriesAdmin")
+                : tab === "map"
+                  ? t("diseaseHeatmap")
+                  : t("anomalyAnalysis")}
             </button>
           );
         })}

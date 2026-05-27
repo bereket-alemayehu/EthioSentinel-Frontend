@@ -76,7 +76,7 @@ export function AlertDetailModal({
       subtitle={t("alertApprovalsTabHint")}
       icon={<Bell className="h-5 w-5" />}
       footer={
-        alert && alert.status === "Draft" ? (
+        alert && alert.status === "Pending" ? (
           <div className="space-y-3">
             <p className="text-sm text-slate-600 dark:text-slate-400">{t("alertApprovedDestination")}</p>
             <AdminApprovalActions
@@ -90,9 +90,13 @@ export function AlertDetailModal({
               rejectLabel={t("rejectAlertAction")}
             />
           </div>
-        ) : alert?.status === "Approved" ? (
+        ) : alert?.status === "Active" ? (
           <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
             {t("alertAlreadyDelivered")}
+          </p>
+        ) : alert?.status === "Rejected" ? (
+          <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+            {t("alertRejectedToast")}
           </p>
         ) : null
       }
@@ -119,7 +123,11 @@ export function AlertDetailModal({
               </div>
             ) : null}
             <Badge variant="secondary">
-              {alert.status === "Approved" ? t("authorizedStatus") : t("awaitingReview")}
+              {alert.status === "Active"
+                ? t("authorizedStatus")
+                : alert.status === "Rejected"
+                  ? t("rejectedStatus")
+                  : t("awaitingReview")}
             </Badge>
             {alert.aiSuggested ? (
               <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
