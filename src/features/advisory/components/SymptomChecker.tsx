@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useSymptomCheckMutation } from "../hooks/useAdvisory";
 import type { SymptomResult } from "../types";
+import { useTranslation } from "react-i18next";
 
 type ChatMessage =
   | { id: string; sender: "user"; text: string }
@@ -19,9 +19,9 @@ const SYMPTOMS = [
 ] as const;
 
 function riskClass(level: SymptomResult["riskLevel"]) {
-  if (level === "HIGH") return "bg-red-100 text-red-700";
-  if (level === "MODERATE") return "bg-amber-100 text-amber-700";
-  return "bg-emerald-100 text-emerald-700";
+  if (level === "HIGH") return "bg-red-100 text-red-700 font-bold";
+  if (level === "MODERATE") return "bg-amber-100 text-amber-700 font-bold";
+  return "bg-emerald-100 text-emerald-700 font-bold";
 }
 
 export function SymptomChecker() {
@@ -30,12 +30,16 @@ export function SymptomChecker() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mutation = useSymptomCheckMutation();
   const loading = mutation.isPending;
-  const language = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
+
+  const lang = (i18n.language || 'en').toString();
+  const apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';
 
   const userPreview = useMemo(
     () =>
-      selected.length === 0 ? "No symptoms selected" : selected.join(", "),
-    [selected],
+      selected.length === 0 
+        ? (apiLang === "AMHARIC" ? "ምልክት አልተመረጠም" : "No symptoms selected") 
+        : selected.join(", "),
+    [selected, apiLang],
   );
 
   const toggleSymptom = (symptom: string) => {
@@ -52,12 +56,15 @@ export function SymptomChecker() {
     const userMessage: ChatMessage = {
       id: `${Date.now()}-u`,
       sender: "user",
-      text: `Symptoms: ${selected.join(", ")}`,
+      text: `${apiLang === "AMHARIC" ? "ምልክቶች፦" : "Symptoms:"} ${selected.join(", ")}`,
     };
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const data = await mutation.mutateAsync({ symptoms: selected, language });
+      const data = await mutation.mutateAsync({ 
+        symptoms: selected,
+        language: apiLang
+      });
 
       const botMessage: ChatMessage = {
         id: `${Date.now()}-b`,
@@ -71,24 +78,38 @@ export function SymptomChecker() {
         sender: "bot",
         result: {
           selectedSymptoms: selected,
-          probableDisease: "Unavailable",
+          probableDisease: apiLang === "AMHARIC" ? "አልተገኘም" : "Unavailable",
           riskLevel: "LOW",
-          advice: "Unable to reach symptom checker service. Please try again.",
-          disclaimer:
-            "This symptom checker is for guidance only and is not a medical diagnosis.",
-          language: "ENGLISH",
+          advice: apiLang === "AMHARIC" 
+            ? "የምልክት መመርመሪያ አገልግሎቱን ማግኘት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
+            : "Unable to reach symptom checker service. Please try again.",
+          disclaimer: apiLang === "AMHARIC"
+            ? "ይህ የምልክት ምርመራ ለመመሪያ ብቻ ነው፤ የሕክምና ምርመራ አይደለም።"
+            : "This symptom checker is for guidance only and is not a medical diagnosis.",
+          language: apiLang,
         },
       };
       setMessages((prev) => [...prev, botMessage]);
     }
   };
 
+  const SYMPTOMS_MAP: Record<string, string> = {
+    Fever: "ትኩሳት",
+    Cough: "ሳል",
+    Diarrhea: "ተቅማጥ",
+    Vomiting: "ትውከት",
+    Headache: "ራስ ምታት",
+    "Body pain": "የሰውነት ህመም",
+    Fatigue: "ድካም",
+    "Sore throat": "የጉሮሮ ህመም",
+  };
+
   return (
     <section className="rounded-lg border p-4 bg-card text-card-foreground space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Symptom Checker</h2>
+        <h2 className="text-lg font-semibold">{t("aiSymptomChecker")}</h2>
         <p className="text-sm text-muted-foreground">
-          Select symptoms and get a quick risk guidance.
+          {t("symptomCheckerDesc")}
         </p>
       </div>
 
@@ -106,7 +127,7 @@ export function SymptomChecker() {
                   : "bg-background text-foreground border-border"
               }`}
             >
-              {symptom}
+              {apiLang === "AMHARIC" ? SYMPTOMS_MAP[symptom] || symptom : symptom}
             </button>
           );
         })}
@@ -117,9 +138,11 @@ export function SymptomChecker() {
           type="button"
           onClick={() => void submit()}
           disabled={selected.length === 0 || loading}
-          className="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"
+          className="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50 font-medium transition active:scale-95"
         >
-          {loading ? "Checking..." : "Check symptoms"}
+          {loading 
+            ? (apiLang === "AMHARIC" ? "በመፈተሽ ላይ..." : "Checking...") 
+            : (apiLang === "AMHARIC" ? "ምልክቶችን ፈትሽ" : t("symptomCheck"))}
         </button>
         <span className="text-xs text-muted-foreground">{userPreview}</span>
       </div>
