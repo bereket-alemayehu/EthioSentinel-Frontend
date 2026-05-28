@@ -42,6 +42,7 @@ export interface OutbreakNewsItem {
   title: string;
   summary: string;
   url: string;
+  imageUrl?: string;
   publishedAt: string | null;
   source: "WHO" | "WHO Africa" | "Google News";
   scope: "GLOBAL" | "AFRICA" | "ETHIOPIA";

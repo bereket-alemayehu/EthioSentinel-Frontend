@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getChatHistoryApi, sendChatMessageApi, sendPublicChatMessageApi, clearChatHistoryApi } from '@/features/advisory/api';
 import { useGrammarCheck } from 'react-grammar-kit';
+import { sanitizeChatReply } from '@/shared/utils/healthMessaging';
 
 // Chat messages interface
 interface Message {
@@ -29,8 +30,8 @@ export function Chatbot() {
 
   const getGreeting = useCallback(() => {
     return i18n.language === 'am'
-      ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ። ዛሬ በጤና ክትትል ረገድ እንዴት ልረዳዎት እችላለሁ?`
-      : `Hello! I am ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. How can I help you with healthcare monitoring today?`;
+      ? `ሰላም! እኔ ${import.meta.env.VITE_CHAT_BOT_NAME || 'የኢትዮ ሴንቲኔል ረዳት'} ነኝ። ስለ ምልክቶች፣ መከላከል ወይም የአካባቢ ጤና መረጃ ይጠይቁኝ።`
+      : `Hello! I'm ${import.meta.env.VITE_CHAT_BOT_NAME || 'EthioSentinel Assistant'}. Ask about symptoms, prevention, or local health updates.`;
   }, [i18n.language]);
 
   const [messages, setMessages] = useState<Message[]>(() => [
@@ -80,7 +81,8 @@ export function Chatbot() {
           setMessages(
             history.map((item) => ({
               id: item.id,
-              text: item.text,
+              text:
+                item.role === 'USER' ? item.text : sanitizeChatReply(item.text),
               sender: item.role === 'USER' ? 'user' : 'bot',
               timestamp: new Date(item.createdAt),
             })),
@@ -151,7 +153,11 @@ export function Chatbot() {
     setIsLoading(true);
 
     try {
-      const language = i18n.language === 'am' ? 'AMHARIC' : 'ENGLISH';
+      const wantsAmharic =
+        /[\u1200-\u137F]/.test(input) ||
+        /speak\s+(in\s+)?amharic|in\s+amharic|amharic\s+please|please\s+speak\s+in\s+amharic/i.test(input);
+      const language =
+        i18n.language === 'am' || wantsAmharic ? 'AMHARIC' : 'ENGLISH';
       let reply;
       if (user) {
         reply = await sendChatMessageApi(input, language);
@@ -176,7 +182,7 @@ export function Chatbot() {
 
       const botMessage: Message = {
         id: reply.id,
-        text: reply.text,
+        text: sanitizeChatReply(reply.text),
         sender: 'bot',
         timestamp: new Date(reply.createdAt),
       };
@@ -275,9 +281,9 @@ export function Chatbot() {
 
             {!user && (
               <div className="border-b border-border bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                {i18n.language === 'am'
-                  ? `እንግዳ መዳረሻ፡ ${Math.max(0, GUEST_CHAT_LIMIT - guestCount)} ነፃ ጥያቄዎች ቀርተዋል። ተጨማሪ ለማግኘት ይመዝገቡ።`
-                  : `Guest access: ${Math.max(0, GUEST_CHAT_LIMIT - guestCount)} free questions left. Sign up for unlimited advisory chat.`}
+                {t('chatGuestBanner', {
+                  count: Math.max(0, GUEST_CHAT_LIMIT - guestCount),
+                })}
               </div>
             )}
 
@@ -320,7 +326,7 @@ export function Chatbot() {
                             strong: ({ children }) => <strong className="font-bold text-primary-600 dark:text-primary-300">{children}</strong>,
                           }}
                         >
-                          {m.text}
+                          {m.sender === 'bot' ? sanitizeChatReply(m.text) : m.text}
                         </ReactMarkdown>
                       ) : (
                         <p>{m.text}</p>
@@ -367,7 +373,7 @@ export function Chatbot() {
               className="p-4 border-t bg-background flex gap-2 items-center"
             >
               <Input
-                placeholder="Type your message..."
+                placeholder={t('chatInputPlaceholder')}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={historyLoading || (!user && guestCount >= GUEST_CHAT_LIMIT)}

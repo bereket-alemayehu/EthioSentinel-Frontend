@@ -1,6 +1,5 @@
 import React from 'react';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from '@/shared/lib/query-client';
 import { get, set, del } from 'idb-keyval';
 
@@ -28,7 +27,6 @@ export const QueryProvider: React.FC<QueryProviderProps> = ({ children }) => {
       persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7 }} // 7 days
     >
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
     </PersistQueryClientProvider>
   );
 };

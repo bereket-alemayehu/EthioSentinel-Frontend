@@ -6,11 +6,12 @@ import { useTranslation } from "react-i18next";
 import { useRegions, useAdvisories } from "@/features/advisory/hooks/useAdvisory";
 import { AdvisoryArticles } from "@/features/advisory/components/AdvisoryArticles";
 import { SymptomChecker } from "@/features/advisory/components/SymptomChecker";
-import { useEthiopiaRegionalStatus, useHealthFacilitiesWithIndicators } from "../hooks/usePublicHealth";
+import { useEthiopiaRegionalStatus, useHealthFacilitiesWithIndicators, useOutbreakNews } from "../hooks/usePublicHealth";
 import type { District } from "@/features/advisory/types";
 import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
 import { syncGeolocationFromDeviceApi } from "@/features/auth/api/auth";
+import { publicAdvisoryTitle } from "@/shared/utils/healthMessaging";
 
 type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
 
@@ -91,80 +92,76 @@ function findNearestDistrict(latitude: number, longitude: number, statuses: Regi
 // district markers and relative-risk helper removed — map focuses on individual health facilities
 
 // --- Unified Feed (small, in-file helper) ----------------------------------
-type SmallNewsItem = { id: string; title: string; source: string; date: string; thumbnail?: string | undefined; verified: 'who' | 'moh' | null };
+type SmallNewsItem = {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  date: string;
+  url: string;
+  thumbnail?: string | undefined;
+  verified: "who" | "moh" | null;
+};
 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-const WHO_RSS = 'https://www.who.int/rss-feeds/mediacentre/news/en/rss.xml';
-const GOOGLE_NEWS_RSS = 'https://news.google.com/rss/search?q=Ethiopia+health&hl=en-US&gl=US&ceid=US:en';
-
-function parseRssForFeed(xmlText: string): SmallNewsItem[] {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(xmlText, 'application/xml');
-    const items = Array.from(doc.querySelectorAll('item'));
-    return items.map((it, idx) => {
-      const title = it.querySelector('title')?.textContent || 'Untitled';
-      const link = it.querySelector('link')?.textContent || '';
-      const pubDate = it.querySelector('pubDate')?.textContent || new Date().toISOString();
-      const enclosure = it.querySelector('enclosure')?.getAttribute('url') || undefined;
-      const source = it.querySelector('source')?.textContent || (link ? new URL(link).hostname : 'news');
-
-      return { id: `${link || title}-${idx}`, title, source, date: new Date(pubDate).toISOString(), thumbnail: enclosure, verified: source.toLowerCase().includes('who') ? 'who' : source.toLowerCase().includes('ministry') ? 'moh' : null };
-    });
-  } catch (e) {
-    return [];
+function advisoryPreviewText(advisory: any, maxLen = 140): string {
+  const raw = String(advisory.publicContent || advisory.content || advisory.summary || "").trim();
+  if (!raw) {
+    return "Please review and follow this health alert guidance immediately.";
   }
+  const clean = raw.replace(/[#*_>\n\r-]+/g, " ").replace(/\s+/g, " ").trim();
+  return clean.length > maxLen ? `${clean.slice(0, maxLen).trimEnd()}...` : clean;
 }
 
 function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
-  const [news, setNews] = useState<SmallNewsItem[]>([]);
-  const [loadingNews, setLoadingNews] = useState(false);
+  const { data: outbreakNews = [], isLoading: loadingNews } = useOutbreakNews();
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchFeeds() {
-      setLoadingNews(true);
-      try {
-        const endpoints = [WHO_RSS, GOOGLE_NEWS_RSS];
-        const results: SmallNewsItem[] = [];
-
-        await Promise.all(
-          endpoints.map(async (url) => {
-            try {
-              const res = await fetch(CORS_PROXY + encodeURIComponent(url));
-              if (!res.ok) return;
-              const text = await res.text();
-              const parsed = parseRssForFeed(text);
-              results.push(...parsed);
-            } catch (e) {
-              // ignore
-            }
-          }),
-        );
-
-        const deduped = results.sort((a, b) => +new Date(b.date) - +new Date(a.date)).filter((v, i, arr) => arr.findIndex((x) => x.id === v.id) === i).slice(0, 20);
-        if (mounted) setNews(deduped);
-      } finally {
-        if (mounted) setLoadingNews(false);
-      }
-    }
-
-    fetchFeeds();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const news: SmallNewsItem[] = useMemo(
+    () =>
+      outbreakNews.map((item) => ({
+        id: item.id,
+        title: item.title || "Untitled",
+        summary: item.summary || "",
+        source: item.source,
+        date: item.publishedAt ?? new Date().toISOString(),
+        url: item.url || "",
+        thumbnail: item.imageUrl,
+        verified:
+          item.source.toLowerCase().includes("who")
+            ? "who"
+            : item.source.toLowerCase().includes("ministry")
+              ? "moh"
+              : null,
+      })),
+    [outbreakNews],
+  );
 
   const alerts = advisoriesList.filter((a) => a.riskLevel === 'CRITICAL' || a.riskLevel === 'HIGH').slice(0, 4);
   const advisoriesGroup = advisoriesList.filter((a) => a.riskLevel !== 'CRITICAL' && a.riskLevel !== 'HIGH').slice(0, 4);
 
-  const getImageUrl = (item: SmallNewsItem) => {
-    if (item.thumbnail) return item.thumbnail;
-    const colors = ['FF6B6B', '4ECDC4', '45B7D1', 'FFA07A', '98D8C8'];
+  const buildFallbackImage = (item: SmallNewsItem) => {
+    const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
     const hash = item.id.charCodeAt(0) % colors.length;
-    return `https://via.placeholder.com/400x200/${colors[hash]}?text=${encodeURIComponent(item.title.substring(0, 20))}`;
+    const bg = colors[hash];
+    const title = item.title.slice(0, 34).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="${bg}" />
+            <stop offset="100%" stop-color="#64748b" />
+          </linearGradient>
+        </defs>
+        <rect width="800" height="400" fill="url(#g)" />
+        <rect x="30" y="30" width="160" height="38" rx="19" fill="rgba(255,255,255,0.18)" />
+        <text x="50" y="55" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">NEWS</text>
+        <text x="40" y="340" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700">${title}</text>
+      </svg>
+    `;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   };
+
+  const getImageUrl = (item: SmallNewsItem) => item.thumbnail || buildFallbackImage(item);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
@@ -185,8 +182,11 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
             <div className="space-y-2">
               {alerts.map((a) => (
                 <div key={a.id} className="rounded-xl border-l-4 border-l-red-600 border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
-                  <p className="font-bold text-red-900 dark:text-red-200">{a.title || a.headline || a.summary || 'Alert'}</p>
+                  <p className="font-bold text-red-900 dark:text-red-200">{publicAdvisoryTitle(a.title || a.headline || a.summary || 'Alert')}</p>
                   <p className="mt-1 text-xs text-red-700 dark:text-red-300">{a.regionName || a.region?.name || 'Global'}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-red-800/90 dark:text-red-200/90">
+                    {advisoryPreviewText(a)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -202,7 +202,7 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
             <div className="space-y-2">
               {advisoriesGroup.map((a) => (
                 <div key={a.id} className="rounded-xl border-l-4 border-l-amber-500 border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
-                  <p className="font-bold text-amber-900 dark:text-amber-200">{a.title || a.headline || a.summary || 'Advisory'}</p>
+                  <p className="font-bold text-amber-900 dark:text-amber-200">{publicAdvisoryTitle(a.title || a.headline || a.summary || 'Advisory')}</p>
                   <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{a.regionName || a.region?.name || 'Global'}</p>
                 </div>
               ))}
@@ -235,7 +235,7 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                       alt={n.title}
                       className="h-full w-full object-cover transition group-hover:scale-105"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://via.placeholder.com/400x200/9CA3AF?text=News`;
+                        (e.target as HTMLImageElement).src = buildFallbackImage(n);
                       }}
                     />
                     {n.verified && (
@@ -262,14 +262,22 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                     {expandedNews === n.id && (
                       <div className="mt-3 border-t border-border pt-3">
                         <p className="text-xs leading-relaxed text-foreground">
-                          {n.title}
+                          {n.summary || n.title}
                         </p>
-                        <a
-                          href="#"
-                          className="mt-2 inline-block text-xs font-semibold text-primary underline transition hover:text-primary/80"
-                        >
-                          Read full article ↗
-                        </a>
+                        {n.url ? (
+                          <a
+                            href={n.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 inline-block text-xs font-semibold text-primary underline transition hover:text-primary/80"
+                          >
+                            Read full article ↗
+                          </a>
+                        ) : (
+                          <span className="mt-2 inline-block text-xs font-semibold text-muted-foreground">
+                            Full article link unavailable
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -381,9 +389,11 @@ function MapLegend() {
 // RiskBadge removed — map focuses on facility markers now
 
 export default function CitizenPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const preferredLanguage = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
   const { data: regions = [], isLoading: regionsLoading, error: regionsError } = useRegions();
-  const { data: advisories = [], isLoading: advisoriesLoading, error: advisoriesError } = useAdvisories();
+  const { data: advisories = [], isLoading: advisoriesLoading, error: advisoriesError } =
+    useAdvisories(preferredLanguage);
   const { data: regionStatus, isLoading: regionStatusLoading } = useEthiopiaRegionalStatus(30);
   const { data: healthFacilitiesWithIndicators = [], isLoading: facilitiesLoading } = useHealthFacilitiesWithIndicators(30);
 

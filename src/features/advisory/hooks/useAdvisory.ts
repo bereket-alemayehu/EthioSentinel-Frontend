@@ -4,21 +4,24 @@ import { getRegions, getAdvisories, checkSymptoms } from '../api';
 export const advisoryKeys = {
   all: ['advisory'] as const,
   regions: () => [...advisoryKeys.all, 'regions'] as const,
-  list: () => [...advisoryKeys.all, 'list'] as const,
+  list: (language?: 'ENGLISH' | 'AMHARIC') =>
+    [...advisoryKeys.all, 'list', language ?? 'all'] as const,
 };
 
 export const useRegions = () => {
   return useQuery({
     queryKey: advisoryKeys.regions(),
     queryFn: getRegions,
-    staleTime: 1000 * 60 * 30, // 30 mins
+    staleTime: 1000 * 60 * 5, // 5 mins
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 };
 
-export const useAdvisories = () => {
+export const useAdvisories = (language?: 'ENGLISH' | 'AMHARIC') => {
   return useQuery({
-    queryKey: advisoryKeys.list(),
-    queryFn: getAdvisories,
+    queryKey: advisoryKeys.list(language),
+    queryFn: () => getAdvisories(language),
     staleTime: 1000 * 60 * 5, // 5 mins
   });
 };

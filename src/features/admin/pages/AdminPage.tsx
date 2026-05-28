@@ -12,7 +12,6 @@ import { AdvisoryManagement } from "@/features/admin/components/AdvisoryManageme
 import { MapIntelligence } from "@/features/admin/components/MapIntelligence";
 import { AnomalyAnalysis } from "@/features/admin/components/AnomalyAnalysis";
 import { AdvisoryDetailModal } from "@/features/admin/components/AdvisoryDetailModal";
-import { aggregateByDistrict } from "@/features/admin/utils";
 // removed alert approval UI: no alert-specific action helpers required
 
 const ADMIN_TABS: AdminTab[] = ["advisories", "map", "anomaly"];
@@ -83,12 +82,6 @@ export default function AdminPage() {
     ? String(updateAdvisoryMutation.variables?.id)
     : null;
 
-  const totalReports = geoStats.reduce((acc, c) => acc + c.reportCount, 0);
-  const totalCases = geoStats.reduce((acc, c) => acc + c.totalCases, 0);
-  const districtList = aggregateByDistrict(geoStats);
-  const highRiskDistricts = districtList.filter((d) => d.totalCases > 50).length;
-  const maxCases = districtList[0]?.totalCases ?? 1;
-
   return (
     <div className="p-6 md:p-10 space-y-8 min-h-screen bg-slate-50/60 dark:bg-slate-950/60 font-sans transition-colors duration-500">
       {user?.role === "super_admin" ? (
@@ -147,16 +140,7 @@ export default function AdminPage() {
 
       {/* ── TAB: DISEASE HEATMAP ────────────────────────────────────────── */}
       {activeTab === "map" && (
-        <MapIntelligence
-          geoStats={geoStats}
-          geoLoading={geoLoading}
-          districtList={districtList}
-          totalCases={totalCases}
-          totalReports={totalReports}
-          highRiskDistricts={highRiskDistricts}
-          maxCases={maxCases}
-          t={t}
-        />
+        <MapIntelligence geoStats={geoStats} geoLoading={geoLoading} t={t} />
       )}
 
       {activeTab === "anomaly" && (

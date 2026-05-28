@@ -80,6 +80,10 @@ const RISK_CONFIG: Record<
   },
 };
 
+function advisoryBody(item: Advisory): string {
+  return item.publicContent?.trim() || item.content;
+}
+
 function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePayload {
   const issued = item.createdAt
     ? new Date(item.createdAt).toLocaleString(undefined, {
@@ -95,7 +99,7 @@ function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePa
     t("generalHealth");
   return {
     title: publicAdvisoryTitle(item.title),
-    content: parsePublicAdvisoryBlocks(item.content)
+    content: parsePublicAdvisoryBlocks(advisoryBody(item))
       .map((b) =>
         b.kind === "list"
           ? b.items.map((it, i) => `${i + 1}. ${it}`).join("\n")
@@ -236,7 +240,7 @@ function AdvisoryModal({
 
         {/* Body */}
         <div className="px-8 py-6">
-          <AdvisoryBody blocks={parsePublicAdvisoryBlocks(item.content)} />
+          <AdvisoryBody blocks={parsePublicAdvisoryBlocks(advisoryBody(item))} />
 
           {/* Actions */}
           <div className="mt-8 flex items-center gap-3 border-t border-border pt-5">
@@ -338,7 +342,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
           const diseaseLabel =
             resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
             t("generalHealth");
-          const summary = extractSummary(item.content);
+          const summary = extractSummary(advisoryBody(item));
 
           return (
             <button

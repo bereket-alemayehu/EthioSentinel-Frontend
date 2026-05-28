@@ -1,7 +1,7 @@
 /** Citizen-facing advisory display — friendly, detailed, structured. */
 
 const SKIP_LINE =
-  /^(AI anomaly|Current cases:|baseline mean|z-score|Suggested immediate actions:|This draft was generated|Source:|requires ADMIN review)/i;
+  /^(AI\s*Draft|AI anomaly|Current cases:|Historical|baseline|z-score|std dev|classification:|Suggested immediate actions:|This draft was generated|Source:|requires ADMIN review|spike detected)/i;
 
 export type AdvisoryContentBlock =
   | { kind: "heading"; text: string }
@@ -11,9 +11,12 @@ export type AdvisoryContentBlock =
 export function publicAdvisoryTitle(title: string): string {
   return title
     .replace(/^AI\s*Draft:\s*/i, "")
-    .replace(/\s*spike detected\s*/gi, " update ")
+    .replace(/\s*[-–]?\s*spike detected\s*/gi, " ")
+    .replace(/\s*\(z-?score[^)]*\)/gi, "")
+    .replace(/\bbaseline\s+cases?\b/gi, "")
     .replace(/^Health advisory:\s*/i, "")
     .replace(/Health Advisory:\s*/i, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
@@ -47,7 +50,12 @@ export function parsePublicAdvisoryBlocks(content: string): AdvisoryContentBlock
       flushList();
       continue;
     }
-    if (SKIP_LINE.test(raw) || /z-score|baseline mean/i.test(raw)) continue;
+    if (
+      SKIP_LINE.test(raw) ||
+      /z-score|baseline mean|anomaly detection|AI draft|std dev/i.test(raw)
+    ) {
+      continue;
+    }
 
     const numbered = raw.match(/^(\d+)[.)]\s+(.+)$/);
     const bullet = raw.match(/^[-•*]\s+(.+)$/);
@@ -83,6 +91,26 @@ export function publicAdvisoryParagraphs(content: string): string[] {
   return parsePublicAdvisoryBlocks(content)
     .filter((b): b is { kind: "paragraph"; text: string } => b.kind === "paragraph")
     .map((b) => b.text);
+}
+
+/** Strip technical jargon from chatbot replies before display. */
+export function sanitizeChatReply(text: string): string {
+  return text
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/\bz-?score\b/gi, "unusual increase")
+        .replace(/\banomaly detection\b/gi, "illness monitoring")
+        .replace(/\banomaly signal\b/gi, "health update")
+        .replace(/\bbaseline mean\b/gi, "usual level")
+        .replace(/\bAI draft\b/gi, "")
+        .trim(),
+    )
+    .filter((line) => line.length > 0)
+    .join("\n")
+    .replace(/\badvisory\b/gi, "health guidance")
+    .replace(/\badvisories\b/gi, "health updates")
+    .trim();
 }
 
 export function resolvePublicDiseaseLabel(

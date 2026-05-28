@@ -6,9 +6,11 @@ import { AdvisoryArticles } from "../components/AdvisoryArticles";
 import { useRegions, useAdvisories } from "../hooks/useAdvisory";
 
 export default function AdvisoryPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const preferredLanguage = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
   const { data: regions = [], isLoading: regionsLoading } = useRegions();
-  const { data: advisories = [], isLoading: advisoriesLoading } = useAdvisories();
+  const { data: advisories = [], isLoading: advisoriesLoading } =
+    useAdvisories(preferredLanguage);
 
   const [selectedRegionId, setSelectedRegionId] = useState("");
   const [selectedDistrictId, setSelectedDistrictId] = useState("");

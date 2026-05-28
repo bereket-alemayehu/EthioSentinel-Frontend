@@ -26,15 +26,10 @@ import {
   ScrollText,
   Download,
   Shield,
-  ExternalLink,
   KeyRound,
   UserPlus,
   Pencil,
   Ban,
-  Activity,
-  BarChart3,
-  Cpu,
-  Globe2,
   Microscope,
   Trash2,
 } from "lucide-react";
@@ -147,7 +142,7 @@ export default function SuperAdminPage() {
   const usersQ = useQuery({
     queryKey: ["super-admin", "users"],
     queryFn: getSuperAdminUsers,
-    enabled: tab === "users",
+    enabled: tab === "users" || tab === "access",
   });
 
   const auditQ = useQuery({
@@ -218,23 +213,11 @@ export default function SuperAdminPage() {
               Super admin
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-              Governance, security, and the same operational tools as admin
+              Governance, security, users, disease catalog, and audit
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-2 rounded-full border-teal-600/40"
-            asChild
-          >
-            <Link to="/admin">
-              <ExternalLink className="h-4 w-4" />
-              Operations dashboard
-            </Link>
-          </Button>
           {tabs.map((t) => (
             <Button
               key={t.id}
@@ -276,48 +259,14 @@ export default function SuperAdminPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FeatureCard
-              icon={BarChart3}
-              title="Disease & mortality trends"
-              description="Heatmaps, weekly aggregates, and case loads across regions — open the operations dashboard map and anomaly tabs."
-              action={
-                <Button type="button" size="sm" variant="secondary" asChild>
-                  <Link to="/admin?tab=map">Open map & trends</Link>
-                </Button>
-              }
-            />
-            <FeatureCard
-              icon={Activity}
-              title="User activity & notifications"
-              description="Alert throughput, advisory pipeline, and geo reporting volume are tracked here and in audit filters (logins, failures, role changes)."
-              action={
-                <Button type="button" size="sm" variant="secondary" asChild>
-                  <Link to="/admin?tab=alerts">Review alerts & activity</Link>
-                </Button>
-              }
-            />
-            <FeatureCard
-              icon={Globe2}
-              title="National reporting & exports"
-              description="Weekly report exports (JSON, PDF, XLSX) from the reports API; compare regions via map intelligence and analytics endpoints."
-              action={
-                <Button type="button" size="sm" variant="secondary" asChild>
-                  <Link to="/admin?tab=map">Regional comparison</Link>
-                </Button>
-              }
-            />
-            <FeatureCard
-              icon={Cpu}
-              title="AI operations (roadmap)"
-              description="Configure anomaly thresholds, view model accuracy, retrain models, toggle AI alerts, and manage advisory templates — wire to /api/ai and governance policies as they land."
-              action={
-                <Button type="button" size="sm" variant="outline" disabled>
-                  Console (planned)
-                </Button>
-              }
-            />
-          </div>
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Use the tabs above for user lifecycle, disease catalog, and audit trails.
+              Regional disease maps, health guidance review, and illness trend tools are
+              available on the dedicated admin operations dashboard (separate from this
+              governance console).
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -455,56 +404,173 @@ export default function SuperAdminPage() {
       )}
 
       {tab === "access" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="border-slate-200 dark:border-slate-800 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Built-in roles</CardTitle>
-              <p className="text-sm text-slate-500">
-                Custom permission matrices and per-action policies are not stored in the database yet.
-                Today, access is enforced by role checks on each API route.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-              <p>
-                <strong className="text-slate-900 dark:text-slate-100">SUPER_ADMIN</strong> — platform
-                governance (this console) plus full operational access like{" "}
-                <strong className="text-slate-900 dark:text-slate-100">ADMIN</strong>.
-              </p>
-              <p>
-                <strong className="text-slate-900 dark:text-slate-100">ADMIN</strong> — approvals,
-                advisories, map intelligence, analytics, AI triggers.
-              </p>
-              <p>
-                <strong className="text-slate-900 dark:text-slate-100">HEW</strong> — district reporting
-                and offline sync.
-              </p>
-              <p>
-                <strong className="text-slate-900 dark:text-slate-100">RESEARCHER</strong> — read-heavy
-                analytics alongside admin on shared endpoints.
-              </p>
-              <p>
-                <strong className="text-slate-900 dark:text-slate-100">CITIZEN</strong> — public advisory
-                consumption and assistant flows.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200 dark:border-slate-800 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Super admin handover</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-              <ol className="list-decimal pl-5 space-y-2">
-                <li>Create or promote another active SUPER_ADMIN account under Users.</li>
-                <li>Verify they can sign in and open this governance console.</li>
-                <li>Demote or revoke your own account only after the successor is active.</li>
-              </ol>
-              <Button type="button" size="sm" variant="secondary" asChild>
-                <Link to="/settings">Open account security (password)</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <RolesAccessTab
+          users={usersQ.data ?? []}
+          loading={usersQ.isLoading}
+          onOpenUsers={() => setTab("users")}
+        />
       )}
+    </div>
+  );
+}
+
+const ROLE_DEFINITIONS: Array<{
+  role: string;
+  summary: string;
+  capabilities: string[];
+}> = [
+  {
+    role: "SUPER_ADMIN",
+    summary: "Platform governance plus full operational tools.",
+    capabilities: [
+      "This governance console (users, audit, disease catalog)",
+      "Same API access as ADMIN on operations routes",
+      "Create, update, revoke users",
+    ],
+  },
+  {
+    role: "ADMIN",
+    summary: "Regional operations and approvals.",
+    capabilities: [
+      "Approve health guidance and alerts",
+      "Map intelligence and analytics",
+      "Trigger illness trend checks",
+    ],
+  },
+  {
+    role: "HEW",
+    summary: "Field reporting.",
+    capabilities: [
+      "Submit and sync disease reports",
+      "Offline batch upload",
+      "District-scoped reporting",
+    ],
+  },
+  {
+    role: "RESEARCHER",
+    summary: "Read-heavy analytics.",
+    capabilities: [
+      "View reports and geo analytics",
+      "Run trend analysis tools",
+    ],
+  },
+  {
+    role: "CITIZEN",
+    summary: "Public health information.",
+    capabilities: [
+      "View approved health guidance",
+      "Health assistant chat",
+      "Symptom checker",
+    ],
+  },
+];
+
+function RolesAccessTab({
+  users,
+  loading,
+  onOpenUsers,
+}: {
+  users: GovernanceUser[];
+  loading: boolean;
+  onOpenUsers: () => void;
+}) {
+  const roleCounts = useMemo(() => {
+    const counts = new Map<string, { total: number; active: number }>();
+    for (const def of ROLE_DEFINITIONS) {
+      counts.set(def.role, { total: 0, active: 0 });
+    }
+    for (const u of users) {
+      const key = u.role.toUpperCase();
+      const entry = counts.get(key) ?? { total: 0, active: 0 };
+      entry.total += 1;
+      if (u.isActive) entry.active += 1;
+      counts.set(key, entry);
+    }
+    return counts;
+  }, [users]);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="border-slate-200 dark:border-slate-800 shadow-lg lg:col-span-2">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">Roles & access</CardTitle>
+            <p className="text-sm text-slate-500 mt-1">
+              Permissions are enforced by role on each API route. Counts reflect registered users.
+            </p>
+          </div>
+          <Button type="button" size="sm" variant="secondary" onClick={onOpenUsers}>
+            Manage users
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0 overflow-auto">
+          {loading ? (
+            <p className="p-8 text-sm text-slate-500">Loading users…</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900">
+                <tr className="text-left text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-3">Role</th>
+                  <th className="px-6 py-3">Active</th>
+                  <th className="px-6 py-3">Total</th>
+                  <th className="px-6 py-3">What they can do</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {ROLE_DEFINITIONS.map((def) => {
+                  const c = roleCounts.get(def.role) ?? { total: 0, active: 0 };
+                  return (
+                    <tr key={def.role} className="align-top">
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
+                        {def.role}
+                        <p className="mt-1 text-xs font-normal text-slate-500">{def.summary}</p>
+                      </td>
+                      <td className="px-6 py-4 tabular-nums">{c.active}</td>
+                      <td className="px-6 py-4 tabular-nums">{c.total}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                        <ul className="list-disc pl-4 space-y-1">
+                          {def.capabilities.map((cap) => (
+                            <li key={cap}>{cap}</li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-200 dark:border-slate-800 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg">How access is applied</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+          <p>Each HTTP route checks the signed-in user&apos;s role before running.</p>
+          <p>
+            To change someone&apos;s role, open <strong>Users</strong>, edit the account, and save.
+            Revoked users cannot sign in.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-200 dark:border-slate-800 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg">Super admin handover</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+          <ol className="list-decimal pl-5 space-y-2">
+            <li>Create or promote another active SUPER_ADMIN under Users.</li>
+            <li>Verify they can sign in and open this console.</li>
+            <li>Demote or revoke your own account only after the successor is active.</li>
+          </ol>
+          <Button type="button" size="sm" variant="secondary" asChild>
+            <Link to="/settings">Open account security (password)</Link>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

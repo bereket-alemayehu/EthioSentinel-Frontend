@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSymptomCheckMutation } from "../hooks/useAdvisory";
 import type { SymptomResult } from "../types";
 
@@ -24,10 +25,12 @@ function riskClass(level: SymptomResult["riskLevel"]) {
 }
 
 export function SymptomChecker() {
+  const { t, i18n } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mutation = useSymptomCheckMutation();
   const loading = mutation.isPending;
+  const language = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
 
   const userPreview = useMemo(
     () =>
@@ -54,7 +57,7 @@ export function SymptomChecker() {
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const data = await mutation.mutateAsync({ symptoms: selected });
+      const data = await mutation.mutateAsync({ symptoms: selected, language });
 
       const botMessage: ChatMessage = {
         id: `${Date.now()}-b`,

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -13,28 +14,79 @@ import { Heatmap } from "./Heatmap";
 import { exportAnalyticsBlob } from "../api";
 import { downloadBlob, timestampedFilename } from "@/shared/utils/download";
 import { toast } from "sonner";
+import { useRegions } from "@/features/advisory/hooks/useAdvisory";
+import type { District } from "@/features/advisory/types";
+import { aggregateByDistrict } from "@/features/admin/utils";
 
 interface MapIntelligenceProps {
   geoStats: any[];
   geoLoading: boolean;
-  districtList: any[];
-  totalCases: number;
-  totalReports: number;
-  highRiskDistricts: number;
-  maxCases: number;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }
 
 export function MapIntelligence({
   geoStats,
   geoLoading,
-  districtList,
-  totalCases,
-  totalReports,
-  highRiskDistricts,
-  maxCases,
-  t
+  t,
 }: MapIntelligenceProps) {
+  const { data: regions = [], isLoading: regionsLoading } = useRegions();
+  const [selectedRegionId, setSelectedRegionId] = useState("");
+  const [selectedDistrictName, setSelectedDistrictName] = useState("");
+
+  useEffect(() => {
+    if (regions.length > 0 && !selectedRegionId) {
+      setSelectedRegionId(String(regions[0].id));
+    }
+  }, [regions, selectedRegionId]);
+
+  const selectedRegion = useMemo(
+    () => regions.find((r) => String(r.id) === selectedRegionId) ?? null,
+    [regions, selectedRegionId],
+  );
+
+  const districtOptions: District[] = selectedRegion?.districts ?? [];
+
+  useEffect(() => {
+    if (districtOptions.length > 0 && !selectedDistrictName) {
+      setSelectedDistrictName(districtOptions[0].name);
+    }
+  }, [districtOptions, selectedDistrictName]);
+
+  const districtNamesInRegion = useMemo(() => {
+    if (!selectedRegion) return null;
+    return new Set(
+      (selectedRegion.districts ?? []).map((d) => d.name.toLowerCase().trim()),
+    );
+  }, [selectedRegion]);
+
+  const filteredGeoStats = useMemo(() => {
+    let rows = geoStats;
+    if (districtNamesInRegion) {
+      rows = rows.filter((row) =>
+        districtNamesInRegion.has(String(row.district).toLowerCase().trim()),
+      );
+    }
+    if (selectedDistrictName) {
+      const key = selectedDistrictName.toLowerCase().trim();
+      rows = rows.filter(
+        (row) => String(row.district).toLowerCase().trim() === key,
+      );
+    }
+    return rows;
+  }, [geoStats, districtNamesInRegion, selectedDistrictName]);
+
+  const districtList = aggregateByDistrict(filteredGeoStats);
+  const totalReports = filteredGeoStats.reduce(
+    (acc, c) => acc + c.reportCount,
+    0,
+  );
+  const totalCases = filteredGeoStats.reduce(
+    (acc, c) => acc + c.totalCases,
+    0,
+  );
+  const highRiskDistricts = districtList.filter((d) => d.totalCases > 50).length;
+  const maxCases = districtList[0]?.totalCases ?? 1;
+
   const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
       const blob = await exportAnalyticsBlob(format);
@@ -49,7 +101,52 @@ export function MapIntelligence({
 
   return (
     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
-      {/* ── Stats strip ─────────────────────────────────────────────── */}
+      <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+        <CardContent className="p-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:flex-wrap">
+          <div className="space-y-1 flex-1 min-w-[160px]">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {t("region")}
+            </label>
+            <select
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+              value={selectedRegionId}
+              disabled={regionsLoading}
+              onChange={(e) => {
+                setSelectedRegionId(e.target.value);
+                setSelectedDistrictName("");
+              }}
+            >
+              {regions.map((r) => (
+                <option key={r.id} value={String(r.id)}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1 flex-1 min-w-[160px]">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {t("district")}
+            </label>
+            <select
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+              value={selectedDistrictName}
+              disabled={!districtOptions.length}
+              onChange={(e) => setSelectedDistrictName(e.target.value)}
+            >
+              <option value="">{t("allDistrictsInRegion")}</option>
+              {districtOptions.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 sm:basis-full">
+            {t("adminMapFilterHint")}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           { icon: MapPin, label: t("districtsTracked"), value: districtList.length, sub: t("surveillanceActive"), color: "from-teal-600 to-teal-800" },
@@ -74,9 +171,7 @@ export function MapIntelligence({
         ))}
       </div>
 
-      {/* ── Two-column map + district list ──────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-        {/* Map panel */}
         <Card className="shadow-2xl shadow-slate-200/40 dark:shadow-none border-none overflow-hidden bg-white dark:bg-slate-900">
           <CardHeader className="px-8 py-6 border-b dark:border-slate-800 flex flex-row items-center justify-between bg-white dark:bg-slate-900 relative">
             <div className="space-y-1">
@@ -104,12 +199,11 @@ export function MapIntelligence({
               </div>
             )}
             <div className="p-0">
-              <Heatmap data={geoStats} />
+              <Heatmap data={filteredGeoStats} />
             </div>
           </div>
         </Card>
 
-        {/* District breakdown panel */}
         <Card className="shadow-2xl shadow-slate-200/40 dark:shadow-none flex flex-col h-[680px] border-none bg-white dark:bg-slate-900">
           <CardHeader className="px-8 py-6 border-b dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             <div className="flex items-center justify-between mb-1">
@@ -175,7 +269,6 @@ export function MapIntelligence({
                           ))}
                         </div>
 
-                        {/* Intensity Visualizer */}
                         <div className="space-y-2">
                           <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden shadow-inner">
                             <div
@@ -204,7 +297,6 @@ export function MapIntelligence({
         </Card>
       </div>
 
-      {/* ── Intelligence Deck ──────────────────────────────── */}
       <Card className="border-none shadow-2xl p-8 overflow-hidden relative"
             style={{ background: "linear-gradient(135deg,#0d414d,#0f6b7c,#167554)" }}>
         <div className="absolute right-0 bottom-0 opacity-[0.08] translate-x-1/4 translate-y-1/4 select-none pointer-events-none">
