@@ -98,7 +98,7 @@ export default function SearchPage() {
               >
                 <div className="flex justify-between gap-2 items-start">
                   <div>
-                    <p className="font-semibold">{a.title}</p>
+                    <p className="font-semibold">{a.translatedTitle ?? a.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {a.diseaseType} · {a.region.name} · {a.riskLevel}
                       {a.status === 'DRAFT' ? ` · ${t('draftStatus')}` : ''}

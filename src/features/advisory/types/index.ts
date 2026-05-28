@@ -14,12 +14,12 @@ export interface Region {
 }
 
 export interface Advisory {
-  id: number | string;
+  id: number;
   title: string;
   content: string;
-  /** Citizen-safe body from API when available */
   publicContent?: string;
-  language?: string;
+  translatedTitle?: string;
+  translatedContent?: string;
   diseaseType?: string;
   riskLevel: RiskLevel;
   status: string;

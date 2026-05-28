@@ -80,11 +80,8 @@ const RISK_CONFIG: Record<
   },
 };
 
-function advisoryBody(item: Advisory): string {
-  return item.publicContent?.trim() || item.content;
-}
-
 function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePayload {
+  const content = (item.translatedContent as string) ?? item.publicContent ?? item.content;
   const issued = item.createdAt
     ? new Date(item.createdAt).toLocaleString(undefined, {
         month: "long",
@@ -99,7 +96,7 @@ function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePa
     t("generalHealth");
   return {
     title: publicAdvisoryTitle(item.title),
-    content: parsePublicAdvisoryBlocks(advisoryBody(item))
+    content: parsePublicAdvisoryBlocks(content)
       .map((b) =>
         b.kind === "list"
           ? b.items.map((it, i) => `${i + 1}. ${it}`).join("\n")
@@ -187,8 +184,10 @@ function AdvisoryModal({
 }) {
   const { t } = useTranslation();
   const cfg = RISK_CONFIG[item.riskLevel];
+  const content = (item.translatedContent as string) ?? item.publicContent ?? item.content;
+  const title = (item.translatedTitle as string) ?? item.title;
   const diseaseLabel =
-    resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
+    resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, title) ||
     t("generalHealth");
   const date = item.createdAt
     ? new Date(item.createdAt).toLocaleDateString(undefined, {
@@ -200,7 +199,7 @@ function AdvisoryModal({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
@@ -209,7 +208,7 @@ function AdvisoryModal({
       >
         {/* Gradient header */}
         <div
-          className={`bg-gradient-to-r ${cfg.gradientFrom} ${cfg.gradientTo} px-8 py-6 text-white rounded-t-3xl`}
+          className={`bg-linear-to-r ${cfg.gradientFrom} ${cfg.gradientTo} px-8 py-6 text-white rounded-t-3xl`}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -227,7 +226,7 @@ function AdvisoryModal({
             </button>
           </div>
           <h2 className="text-xl sm:text-2xl font-black leading-tight tracking-tight">
-            {publicAdvisoryTitle(item.title)}
+            {publicAdvisoryTitle(title)}
           </h2>
           <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-white/80">
             <span className="flex items-center gap-1">📍 {item.district?.name || item.region?.name || t("national")}</span>
@@ -240,7 +239,7 @@ function AdvisoryModal({
 
         {/* Body */}
         <div className="px-8 py-6">
-          <AdvisoryBody blocks={parsePublicAdvisoryBlocks(advisoryBody(item))} />
+          <AdvisoryBody blocks={parsePublicAdvisoryBlocks(content)} />
 
           {/* Actions */}
           <div className="mt-8 flex items-center gap-3 border-t border-border pt-5">
@@ -342,7 +341,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
           const diseaseLabel =
             resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
             t("generalHealth");
-          const summary = extractSummary(advisoryBody(item));
+          const summary = extractSummary(item.content);
 
           return (
             <button
@@ -352,7 +351,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
               className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {/* Colored accent strip at top */}
-              <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.gradientFrom} ${cfg.gradientTo}`} />
+              <div className={`h-1.5 w-full bg-linear-to-r ${cfg.gradientFrom} ${cfg.gradientTo}`} />
 
               {/* Card body */}
               <div className="flex flex-1 flex-col p-5">
@@ -375,7 +374,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
 
                 {/* Summary */}
                 <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 mb-4 flex-1">
-                  {summary}
+          {summary}
                 </p>
 
                 {/* Tags row */}

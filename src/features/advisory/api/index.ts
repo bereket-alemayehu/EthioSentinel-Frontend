@@ -6,12 +6,9 @@ export const getRegions = async (): Promise<Region[]> => {
   return response.data.data;
 };
 
-export const getAdvisories = async (
-  language?: 'ENGLISH' | 'AMHARIC',
-): Promise<Advisory[]> => {
-  const response = await api.get<{ data: Advisory[] }>('/advisories', {
-    params: language ? { language } : undefined,
-  });
+export const getAdvisories = async (language?: string): Promise<Advisory[]> => {
+  const qs = language ? `?lang=${encodeURIComponent(language)}` : "";
+  const response = await api.get<{ data: Advisory[] }>(`/advisories${qs}`);
   return response.data.data.filter((item) => item.status === 'APPROVED');
 };
 

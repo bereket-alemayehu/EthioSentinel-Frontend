@@ -9,6 +9,8 @@ export interface AdvisorySearchHit {
   language: string;
   status: string;
   region: { name: string; code: string };
+  translatedTitle?: string;
+  translatedContent?: string;
 }
 
 export interface DiseaseSearchHit {
