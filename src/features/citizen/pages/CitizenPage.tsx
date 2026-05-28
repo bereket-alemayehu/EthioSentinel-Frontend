@@ -99,7 +99,6 @@ type SmallNewsItem = {
   source: string;
   date: string;
   url: string;
-  thumbnail?: string | undefined;
   verified: "who" | "moh" | null;
 };
 
@@ -125,7 +124,6 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
         source: item.source,
         date: item.publishedAt ?? new Date().toISOString(),
         url: item.url || "",
-        thumbnail: item.imageUrl,
         verified:
           item.source.toLowerCase().includes("who")
             ? "who"
@@ -138,30 +136,6 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
 
   const alerts = advisoriesList.filter((a) => a.riskLevel === 'CRITICAL' || a.riskLevel === 'HIGH').slice(0, 4);
   const advisoriesGroup = advisoriesList.filter((a) => a.riskLevel !== 'CRITICAL' && a.riskLevel !== 'HIGH').slice(0, 4);
-
-  const buildFallbackImage = (item: SmallNewsItem) => {
-    const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
-    const hash = item.id.charCodeAt(0) % colors.length;
-    const bg = colors[hash];
-    const title = item.title.slice(0, 34).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
-        <defs>
-          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="${bg}" />
-            <stop offset="100%" stop-color="#64748b" />
-          </linearGradient>
-        </defs>
-        <rect width="800" height="400" fill="url(#g)" />
-        <rect x="30" y="30" width="160" height="38" rx="19" fill="rgba(255,255,255,0.18)" />
-        <text x="50" y="55" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">NEWS</text>
-        <text x="40" y="340" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700">${title}</text>
-      </svg>
-    `;
-    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-  };
-
-  const getImageUrl = (item: SmallNewsItem) => item.thumbnail || buildFallbackImage(item);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
@@ -228,16 +202,17 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                   key={n.id}
                   className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-white via-slate-50/60 to-emerald-50/40 p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-xl dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/20"
                 >
-                  {/* Image Container */}
-                  <div className="relative h-40 w-full overflow-hidden bg-linear-to-br from-slate-200 to-slate-300">
-                    <img
-                      src={getImageUrl(n)}
-                      alt={n.title}
-                      className="h-full w-full object-cover transition group-hover:scale-105"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = buildFallbackImage(n);
-                      }}
-                    />
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-80" />
+
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        📰 News
+                      </span>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {n.source}
+                      </p>
+                    </div>
                     {n.verified && (
                       <span className="rounded-full bg-blue-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
                         {n.verified === "who" ? "✓ WHO" : "✓ MOH"}
@@ -249,32 +224,35 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                     {n.title}
                   </p>
 
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{n.source} • {new Date(n.date).toLocaleDateString()}</p>
+                  <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {new Date(n.date).toLocaleDateString()}
+                  </p>
+
+                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {n.summary || n.title}
+                  </p>
 
                   <button
                     onClick={() => setExpandedNews(expandedNews === n.id ? null : n.id)}
-                    className="mt-3 text-xs font-semibold uppercase tracking-wider text-emerald-600 transition hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    className="mt-4 inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
                   >
                     {expandedNews === n.id ? "← Hide details" : "View details →"}
                   </button>
 
                   {/* Expandable Details */}
                   {expandedNews === n.id && (
-                    <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-xs leading-relaxed text-foreground">
-                        {n.summary || n.title}
-                      </p>
+                    <div className="mt-4 rounded-xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/50">
                       {n.url ? (
                         <a
                           href={n.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-block text-xs font-semibold text-primary underline transition hover:text-primary/80"
+                          className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-primary underline-offset-4 transition hover:underline"
                         >
                           Read full article ↗
                         </a>
                       ) : (
-                        <span className="mt-2 inline-block text-xs font-semibold text-muted-foreground">
+                        <span className="inline-block text-xs font-semibold text-muted-foreground">
                           Full article link unavailable
                         </span>
                       )}
@@ -445,7 +423,6 @@ export default function CitizenPage() {
       setDetectedArea(match);
       setSelectedRegionId(String(match.regionId));
       setSelectedDistrictId(String(match.districtId));
-      setShowAllRegions(false);
     }
 
     const signature = `${liveLocation.latitude.toFixed(5)},${liveLocation.longitude.toFixed(5)}`;
@@ -502,8 +479,11 @@ export default function CitizenPage() {
       return true;
     });
 
-    // Show facilities within distance radius if user has location, or all facilities otherwise
-    const filtered = liveLocation && !showAllRegions ? scopedFacilities.filter((f) => f.distanceKm !== null && f.distanceKm <= LIVE_RADIUS_KM) : scopedFacilities;
+    // Toggle between nearby-only and all scoped facilities
+    const filtered =
+      liveLocation && !showAllRegions
+        ? scopedFacilities.filter((f) => f.distanceKm !== null && f.distanceKm <= LIVE_RADIUS_KM)
+        : scopedFacilities;
     return [...filtered]
       .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY))
       .slice(0, 50);
@@ -521,17 +501,21 @@ export default function CitizenPage() {
 
   const activeFacility = selectedFacility ?? visibleHealthFacilities[0] ?? null;
 
-  const criticalCount = advisories.filter((a) => a.riskLevel === "CRITICAL").length;
-  const highCount = advisories.filter((a) => a.riskLevel === "HIGH").length;
+  const regionScopedAdvisories = useMemo(() => {
+    if (!selectedRegionId) return advisories;
+    return advisories.filter((a) => String(a.regionId) === selectedRegionId);
+  }, [advisories, selectedRegionId]);
+
+  const criticalCount = regionScopedAdvisories.filter((a) => a.riskLevel === "CRITICAL").length;
+  const highCount = regionScopedAdvisories.filter((a) => a.riskLevel === "HIGH").length;
   const totalRegions = regions.length;
-  const totalAdvisories = advisories.length;
+  const totalAdvisories = regionScopedAdvisories.length;
   const regionalTotals = regionStatus?.totals;
   const focusRegionId = useMemo(() => {
-    if (showAllRegions) return null;
     if (selectedRegionId) return Number(selectedRegionId);
     if (detectedArea) return detectedArea.regionId;
     return null;
-  }, [selectedRegionId, detectedArea, showAllRegions]);
+  }, [selectedRegionId, detectedArea]);
 
   const visibleRegionStatuses = useMemo(() => {
     const statuses = regionStatus?.data ?? [];
@@ -629,17 +613,23 @@ export default function CitizenPage() {
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: t("totalAdvisories"), value: totalAdvisories, icon: "📋", sub: t("approvedAndActive") },
-              { label: t("regionsMonitored"), value: totalRegions, icon: "🗺️", sub: t("acrossEthiopia") },
+              { label: t("regionsMonitored"), value: selectedRegionId ? 1 : totalRegions, icon: "🗺️", sub: selectedRegion?.name ?? t("acrossEthiopia") },
               { label: t("highRiskEvents"), value: highCount, icon: "⚠️", sub: t("requireAttention") },
               { label: t("criticalAlerts"), value: criticalCount, icon: "🚨", sub: t("immediateActionNeeded") },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur-sm transition hover:bg-white/15">
+              <div
+                key={stat.label}
+                className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/12 px-5 py-4 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/18 hover:shadow-lg"
+              >
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-emerald-300/80 via-cyan-300/80 to-teal-300/80 opacity-75" />
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl">{stat.icon}</span>
-                  <span className="text-3xl font-extrabold tabular-nums">{loading ? <span className="text-lg opacity-40">…</span> : stat.value}</span>
+                  <span className="text-2xl drop-shadow-sm">{stat.icon}</span>
+                  <span className="text-3xl font-extrabold tabular-nums tracking-tight">
+                    {loading ? <span className="text-lg opacity-40">…</span> : stat.value}
+                  </span>
                 </div>
-                <p className="mt-2 text-sm font-semibold text-white/90">{stat.label}</p>
-                <p className="text-xs text-white/55">{stat.sub}</p>
+                <p className="mt-2 text-sm font-semibold text-white/95">{stat.label}</p>
+                <p className="text-xs text-white/65">{stat.sub}</p>
               </div>
             ))}
           </div>
@@ -704,9 +694,6 @@ export default function CitizenPage() {
                     </span>
                     <button type="button" onClick={handleDetectLocation} className="rounded-full bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#0f6b7c] shadow-sm transition hover:bg-white/90">
                       {t("detectMyRegion")}
-                    </button>
-                    <button type="button" onClick={() => setShowAllRegions((value) => !value)} className="rounded-full border border-white/25 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white transition hover:bg-white/10">
-                      {showAllRegions ? t("showMyRegionOnly") : t("showAllRegions")}
                     </button>
                   </div>
                 </div>
@@ -890,7 +877,11 @@ export default function CitizenPage() {
                       <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nearby health areas</p>
                       <h3 className="mt-1 text-xl font-black text-foreground">Around you</h3>
                     </div>
-                    <button type="button" onClick={() => setShowAllRegions((value) => !value)} className="rounded-full border border-border px-3 py-1 text-xs font-black uppercase tracking-wider text-foreground transition hover:bg-muted">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllRegions((value) => !value)}
+                      className="rounded-full border border-border px-3 py-1 text-xs font-black uppercase tracking-wider text-foreground transition hover:bg-muted"
+                    >
                       {showAllRegions ? "Focus nearby" : "Show all"}
                     </button>
                   </div>
