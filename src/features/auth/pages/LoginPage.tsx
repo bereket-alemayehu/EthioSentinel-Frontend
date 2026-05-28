@@ -60,7 +60,7 @@ export default function LoginPage() {
   const { login, isLoading, error, user, clearError } = useAuth();
 
   const isNetworkLoginError =
-    Boolean(error) &&
+    error !== null &&
     (error.includes("Cannot reach") ||
       error.includes("offline") ||
       error.includes("internet") ||

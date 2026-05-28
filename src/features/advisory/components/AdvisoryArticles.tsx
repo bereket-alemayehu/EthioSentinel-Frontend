@@ -80,6 +80,10 @@ const RISK_CONFIG: Record<
   },
 };
 
+function advisoryBody(item: Advisory): string {
+  return item.publicContent?.trim() || item.content;
+}
+
 function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePayload {
   const content = (item.translatedContent as string) ?? item.publicContent ?? item.content;
   const issued = item.createdAt
@@ -279,7 +283,7 @@ interface AdvisoryArticlesProps {
 
 export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticlesProps) {
   const { t } = useTranslation();
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | string | null>(null);
 
   const handleShare = async (item: Advisory) => {
     const payload = buildPayload(item, t);
@@ -341,7 +345,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
           const diseaseLabel =
             resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
             t("generalHealth");
-          const summary = extractSummary(item.content);
+          const summary = extractSummary(advisoryBody(item));
 
           return (
             <button

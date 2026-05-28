@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSymptomCheckMutation } from "../hooks/useAdvisory";
 import type { SymptomResult } from "../types";
-import { useTranslation } from "react-i18next";
+
 
 type ChatMessage =
   | { id: string; sender: "user"; text: string }
@@ -30,6 +31,7 @@ export function SymptomChecker() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const mutation = useSymptomCheckMutation();
   const loading = mutation.isPending;
+  const language = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
 
   const lang = (i18n.language || 'en').toString();
   const apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';

@@ -139,6 +139,30 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
   const alerts = advisoriesList.filter((a) => a.riskLevel === 'CRITICAL' || a.riskLevel === 'HIGH').slice(0, 4);
   const advisoriesGroup = advisoriesList.filter((a) => a.riskLevel !== 'CRITICAL' && a.riskLevel !== 'HIGH').slice(0, 4);
 
+  const buildFallbackImage = (item: SmallNewsItem) => {
+    const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
+    const hash = item.id.charCodeAt(0) % colors.length;
+    const bg = colors[hash];
+    const title = item.title.slice(0, 34).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="${bg}" />
+            <stop offset="100%" stop-color="#64748b" />
+          </linearGradient>
+        </defs>
+        <rect width="800" height="400" fill="url(#g)" />
+        <rect x="30" y="30" width="160" height="38" rx="19" fill="rgba(255,255,255,0.18)" />
+        <text x="50" y="55" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">NEWS</text>
+        <text x="40" y="340" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700">${title}</text>
+      </svg>
+    `;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  };
+
+  const getImageUrl = (item: SmallNewsItem) => item.thumbnail || buildFallbackImage(item);
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <div className="flex items-center justify-between">
@@ -204,17 +228,16 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                   key={n.id}
                   className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-white via-slate-50/60 to-emerald-50/40 p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-xl dark:border-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950/20"
                 >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-80" />
-
-                  <div className="mb-3 flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        📰 News
-                      </span>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {n.source}
-                      </p>
-                    </div>
+                  {/* Image Container */}
+                  <div className="relative h-40 w-full overflow-hidden bg-linear-to-br from-slate-200 to-slate-300">
+                    <img
+                      src={getImageUrl(n)}
+                      alt={n.title}
+                      className="h-full w-full object-cover transition group-hover:scale-105"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = buildFallbackImage(n);
+                      }}
+                    />
                     {n.verified && (
                       <span className="rounded-full bg-blue-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
                         {n.verified === "who" ? "✓ WHO" : "✓ MOH"}
@@ -226,34 +249,32 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
                     {n.title}
                   </p>
 
-                  <p className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {new Date(n.date).toLocaleDateString()}
-                  </p>
-
-                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                    {n.summary || n.title}
-                  </p>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{n.source} • {new Date(n.date).toLocaleDateString()}</p>
 
                   <button
                     onClick={() => setExpandedNews(expandedNews === n.id ? null : n.id)}
-                    className="mt-4 inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    className="mt-3 text-xs font-semibold uppercase tracking-wider text-emerald-600 transition hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                   >
                     {expandedNews === n.id ? "← Hide details" : "View details →"}
                   </button>
 
+                  {/* Expandable Details */}
                   {expandedNews === n.id && (
-                    <div className="mt-4 rounded-xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-950/50">
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="text-xs leading-relaxed text-foreground">
+                        {n.summary || n.title}
+                      </p>
                       {n.url ? (
                         <a
                           href={n.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-primary underline-offset-4 transition hover:underline"
+                          className="mt-2 inline-block text-xs font-semibold text-primary underline transition hover:text-primary/80"
                         >
                           Read full article ↗
                         </a>
                       ) : (
-                        <span className="inline-block text-xs font-semibold text-muted-foreground">
+                        <span className="mt-2 inline-block text-xs font-semibold text-muted-foreground">
                           Full article link unavailable
                         </span>
                       )}
@@ -266,6 +287,7 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
         </div>
       </div>
     </div>
+    
   );
 }
 
@@ -367,11 +389,10 @@ function MapLegend() {
 // RiskBadge removed — map focuses on facility markers now
 
 export default function CitizenPage() {
-  const { t, i18n } = useTranslation();
-  const preferredLanguage = i18n.language === "am" ? "AMHARIC" : "ENGLISH";
+  const { t } = useTranslation();
   const { data: regions = [], isLoading: regionsLoading, error: regionsError } = useRegions();
   const { data: advisories = [], isLoading: advisoriesLoading, error: advisoriesError } =
-    useAdvisories(preferredLanguage);
+    useAdvisories();
   const { data: regionStatus, isLoading: regionStatusLoading } = useEthiopiaRegionalStatus(30);
   const { data: healthFacilitiesWithIndicators = [], isLoading: facilitiesLoading } = useHealthFacilitiesWithIndicators(30);
 

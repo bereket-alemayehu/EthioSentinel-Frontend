@@ -14,7 +14,7 @@ export interface Region {
 }
 
 export interface Advisory {
-  id: number;
+  id: number | string;
   title: string;
   content: string;
   publicContent?: string;
