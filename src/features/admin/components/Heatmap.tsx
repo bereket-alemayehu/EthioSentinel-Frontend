@@ -278,8 +278,16 @@ function PopupContent({ rows, badge, totalCases, totalDeaths, totalReports }: {
         margin: "-8px -12px 10px",
         borderRadius: "6px 6px 0 0",
       }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>📍 {first.district}</div>
-        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>Desa / District Report Summary</div>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>
+          {first.healthFacilityName
+            ? `🏥 ${first.healthFacilityName}`
+            : `📍 ${first.district}`}
+        </div>
+        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}>
+          {first.healthFacilityName
+            ? `${first.district} · Health Facility Report`
+            : "District Report Summary"}
+        </div>
       </div>
 
       {/* Severity badge */}

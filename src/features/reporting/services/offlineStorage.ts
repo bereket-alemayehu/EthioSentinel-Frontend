@@ -7,6 +7,7 @@ export type HewDraftReportInput = {
   deaths: number;
   date: string;
   district: string;
+  healthFacilityId?: number;
 };
 
 export type HewQueuedReport = HewDraftReportInput & {
@@ -52,6 +53,7 @@ export async function queueHewReport(input: HewDraftReportInput) {
     cases: input.cases,
     deaths: input.deaths,
     date: input.date,
+    healthFacilityId: input.healthFacilityId,
     createdAt: new Date().toISOString(),
     status: "pending",
   };

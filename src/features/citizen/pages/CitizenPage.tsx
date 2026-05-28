@@ -312,6 +312,16 @@ function MapAutoFit({ userLocation, facilities }: { userLocation: LiveLocation |
   const map = useMap();
 
   useEffect(() => {
+    // Leaflet can render with an incorrect viewport size after tab/layout changes.
+    // Force size recalculation so tiles fill the whole container.
+    const raf = window.requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 120);
+
     const points: [number, number][] = [];
 
     if (userLocation) {
@@ -322,15 +332,26 @@ function MapAutoFit({ userLocation, facilities }: { userLocation: LiveLocation |
 
     if (points.length === 0) {
       map.setView([9.145, 40.4897], 6);
-      return;
+      return () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(timeoutId);
+      };
     }
 
     if (points.length === 1) {
       map.setView(points[0], userLocation ? 13 : 8);
-      return;
+      return () => {
+        window.cancelAnimationFrame(raf);
+        window.clearTimeout(timeoutId);
+      };
     }
 
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 13 });
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeoutId);
+    };
   }, [facilities, map, userLocation]);
 
   return null;
@@ -368,9 +389,6 @@ export default function CitizenPage() {
 
   const [selectedRegionId, setSelectedRegionId] = useState<string>("");
   const [selectedDistrictId, setSelectedDistrictId] = useState<string>("");
-  const [regionQuery, setRegionQuery] = useState<string>("");
-  const [districtQuery, setDistrictQuery] = useState<string>("");
-  const [showRegionList, setShowRegionList] = useState(false);
   const [selectedFacility, setSelectedFacility] = useState<HealthFacilityMarker | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [liveLocation, setLiveLocation] = useState<LiveLocation | null>(null);
@@ -386,11 +404,6 @@ export default function CitizenPage() {
     if (regions.length > 0 && !selectedRegionId) {
       setSelectedRegionId(String(regions[0].id));
     }
-  }, [regions, selectedRegionId]);
-
-  useEffect(() => {
-    const currentRegion = regions.find((item) => String(item.id) === selectedRegionId);
-    setRegionQuery(currentRegion?.name ?? "");
   }, [regions, selectedRegionId]);
 
   useEffect(() => {
@@ -435,15 +448,6 @@ export default function CitizenPage() {
 
   const selectedRegion = useMemo(() => regions.find((item) => String(item.id) === selectedRegionId) ?? null, [regions, selectedRegionId]);
   const districtOptions = selectedRegion?.districts ?? [];
-
-  useEffect(() => {
-    setRegionQuery(selectedRegion?.name ?? "");
-  }, [selectedRegion]);
-
-  useEffect(() => {
-    const d = districtOptions.find((d) => String(d.id) === selectedDistrictId);
-    setDistrictQuery(d?.name ?? "");
-  }, [selectedDistrictId, districtOptions]);
 
   const filteredAdvisories = useMemo(() => {
     if (!selectedRegionId) return advisories;
@@ -574,67 +578,41 @@ export default function CitizenPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-white/70">{t("region")}</label>
-                <div className="relative">
-                  <input
-                    value={regionQuery}
-                    onChange={(e) => setRegionQuery(e.target.value)}
-                    onFocus={() => setShowRegionList(true)}
-                    placeholder={t("searchRegion") as string}
-                    className="min-w-40 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-white/40"
-                  />
-
-                  {showRegionList && (
-                    <ul className="absolute left-0 top-full z-50 mt-1 max-h-44 w-full overflow-auto rounded-xl border border-white/10 bg-white/90 py-1 text-sm text-slate-900 shadow-lg dark:bg-slate-800">
-                      {regions
-                        .filter((r) => r.name.toLowerCase().includes(regionQuery.toLowerCase()))
-                        .slice(0, 50)
-                        .map((r) => (
-                          <li
-                            key={r.id}
-                            onMouseDown={(ev) => {
-                              ev.preventDefault();
-                              setSelectedRegionId(String(r.id));
-                              setSelectedDistrictId("");
-                              setRegionQuery(r.name);
-                              setShowRegionList(false);
-                            }}
-                            className="cursor-pointer px-3 py-2 hover:bg-primary-100/60"
-                          >
-                            {r.name}
-                          </li>
-                        ))}
-                      {regions.filter((r) => r.name.toLowerCase().includes(regionQuery.toLowerCase())).length === 0 && (
-                        <li className="px-3 py-2 text-xs text-muted-foreground">No regions found</li>
-                      )}
-                    </ul>
-                  )}
-                </div>
+                <select
+                  value={selectedRegionId}
+                  onChange={(e) => {
+                    setSelectedRegionId(e.target.value);
+                    setSelectedDistrictId("");
+                  }}
+                  className="min-w-40 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-black backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="" disabled>
+                    {t("selectRegion")}
+                  </option>
+                  {regions.map((r) => (
+                    <option key={r.id} value={String(r.id)}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-white/70">{t("district")}</label>
-                <div className="relative">
-                  <input
-                    list="districts-list"
-                    value={districtQuery}
-                    onChange={(e) => setDistrictQuery(e.target.value)}
-                    onBlur={() => {
-                      const match = districtOptions.find((d: District) => d.name.toLowerCase() === districtQuery.toLowerCase());
-                      if (match) {
-                        setSelectedDistrictId(String(match.id));
-                      } else if (districtQuery === "") {
-                        setSelectedDistrictId("");
-                      }
-                    }}
-                    placeholder={t("searchDistrict") as string}
-                    className="min-w-40 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-white/40"
-                  />
-                  <datalist id="districts-list">
-                    <option value="" />
-                    {districtOptions.map((d: District) => (
-                      <option key={d.id} value={d.name} />
-                    ))}
-                  </datalist>
-                </div>
+                <select
+                  value={selectedDistrictId}
+                  onChange={(e) => setSelectedDistrictId(e.target.value)}
+                  disabled={!selectedRegionId}
+                  className="min-w-40 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-black backdrop-blur-sm transition focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {t("selectDistrict")}
+                  </option>
+                  {districtOptions.map((d: District) => (
+                    <option key={d.id} value={String(d.id)}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -743,8 +721,8 @@ export default function CitizenPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]">
               <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card shadow-lg">
                 <MapLegend />
-                <div className="h-135">
-                  <MapContainer center={[9.145, 40.4897]} zoom={6} scrollWheelZoom className="h-full w-full">
+                <div className="h-104 sm:h-128 lg:h-160">
+                  <MapContainer center={[9.145, 40.4897]} zoom={6} scrollWheelZoom className="h-full w-full" style={{ height: "100%", width: "100%" }}>
                     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <MapAutoFit userLocation={liveLocation} facilities={visibleHealthFacilities} />
 

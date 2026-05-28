@@ -43,13 +43,15 @@ export function createRiskPulseIcon(risk: MapRiskLevel): L.DivIcon {
 }
 
 export function aggregateDistricts(data: GeoStat[]): Map<string, GeoStat[]> {
-  const byDistrict = new Map<string, GeoStat[]>();
+  const byLocation = new Map<string, GeoStat[]>();
   data
     .filter((d) => d.latitude !== null && d.longitude !== null)
     .forEach((d) => {
-      const key = `${d.district}||${d.latitude}||${d.longitude}`;
-      if (!byDistrict.has(key)) byDistrict.set(key, []);
-      byDistrict.get(key)!.push(d);
+      // Use facility name as part of the key so each facility gets its own marker
+      const facilityKey = d.healthFacilityName || "_no_facility_";
+      const key = `${d.district}||${facilityKey}||${d.latitude}||${d.longitude}`;
+      if (!byLocation.has(key)) byLocation.set(key, []);
+      byLocation.get(key)!.push(d);
     });
-  return byDistrict;
+  return byLocation;
 }

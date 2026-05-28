@@ -73,6 +73,7 @@ export default function HEWPage() {
     cases: 0,
     deaths: 0,
     date: new Date().toISOString().slice(0, 10),
+    healthFacilityId: user?.healthFacilityId || undefined,
   });
 
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -81,15 +82,25 @@ export default function HEWPage() {
   // Merged reports for display - now filtered by active tab
   const displayReports = useMemo(() => {
     if (activeTab === 'queue') {
-       return queue;
+       return [...queue].sort((a, b) => {
+         const aTime = new Date(a.date || 0).getTime();
+         const bTime = new Date(b.date || 0).getTime();
+         return bTime - aTime;
+       });
     } else {
-       return serverReports.map(r => ({
+       return serverReports
+         .map(r => ({
          ...r,
          status: "archived" as const,
          date: r.timestamp || r.date,
          cases: r.caseCount,
          deaths: r.deathCount,
-       }));
+         }))
+         .sort((a, b) => {
+           const aTime = new Date(a.timestamp || a.createdAt || a.date || 0).getTime();
+           const bTime = new Date(b.timestamp || b.createdAt || b.date || 0).getTime();
+           return bTime - aTime;
+         });
     }
   }, [queue, serverReports, activeTab]);
 
@@ -103,13 +114,18 @@ export default function HEWPage() {
     cases: 0,
     deaths: 0,
     date: "",
+    healthFacilityId: undefined,
   });
 
   const isSyncing = syncMutation.isPending;
 
   useEffect(() => {
-    if (user?.assignedDistrict) {
-      setForm(prev => ({ ...prev, district: user.assignedDistrict || "" }));
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        district: user.assignedDistrict || "",
+        healthFacilityId: user.healthFacilityId || undefined,
+      }));
     }
   }, [user]);
 
@@ -258,6 +274,7 @@ export default function HEWPage() {
       cases: item.cases || item.caseCount,
       deaths: item.deaths || item.deathCount,
       date: formattedDate,
+      healthFacilityId: item.healthFacilityId || item.healthFacility?.id || undefined,
     });
     setIsEditModalOpen(true);
   };
@@ -369,6 +386,7 @@ export default function HEWPage() {
               diseaseOptions={diseaseOptions}
               isOnline={isOnline}
               reportMutationPending={reportMutation.isPending}
+              facilityLabel={facilityLabel}
             />
             
             <HEWSummaryCard 
