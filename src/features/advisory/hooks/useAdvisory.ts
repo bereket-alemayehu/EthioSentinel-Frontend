@@ -19,16 +19,24 @@ export const useRegions = () => {
   });
 };
 
-export const useAdvisories = () => {
+export const useAdvisories = (language?: 'ENGLISH' | 'AMHARIC') => {
   const { i18n } = useTranslation();
-  const lang = (i18n.language || 'en').toString();
-  // Map common codes to backend expected values
-  const apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';
+  
+  // Use provided language or detect from i18n context
+  let apiLang: 'ENGLISH' | 'AMHARIC';
+  if (language) {
+    apiLang = language;
+  } else {
+    const lang = (i18n.language || 'en').toString();
+    apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';
+  }
 
   return useQuery({
-    queryKey: [...advisoryKeys.list(), apiLang],
+    queryKey: advisoryKeys.list(apiLang),
     queryFn: () => getAdvisories(apiLang),
     staleTime: 1000 * 60 * 5, // 5 mins
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 };
 

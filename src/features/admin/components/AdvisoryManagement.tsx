@@ -7,6 +7,7 @@ import { cn } from "@/shared/utils/cn";
 import { getSeverityLevel } from "@/features/admin/utils";
 import { useTranslation } from "react-i18next";
 import { formatDate } from "@/shared/utils/formatDate";
+import { publicAdvisoryTitle } from "@/shared/utils/healthMessaging";
 
 interface AdvisoryManagementProps {
   drafts: any[];
@@ -169,7 +170,7 @@ export function AdvisoryManagement({
                         </td>
                         <td className="px-8 py-6 max-w-md">
                           <div className="space-y-1">
-                            <p className="text-slate-800 dark:text-slate-200 font-bold text-sm">{advisory.title}</p>
+                            <p className="text-slate-800 dark:text-slate-200 font-bold text-sm">{publicAdvisoryTitle(advisory.title)}</p>
                             <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-[13px] line-clamp-2">
                               {advisory.content}
                             </p>

@@ -81,7 +81,7 @@ const RISK_CONFIG: Record<
 };
 
 function advisoryBody(item: Advisory): string {
-  return item.publicContent?.trim() || item.content;
+  return (item.translatedContent as string) ?? (item.publicContent?.trim() || item.content);
 }
 
 function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePayload {
