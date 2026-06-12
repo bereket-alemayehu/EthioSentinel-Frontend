@@ -26,7 +26,7 @@ export const useAdvisories = () => {
   const apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';
 
   return useQuery({
-    queryKey: [...advisoryKeys.list(), apiLang],
+    queryKey: advisoryKeys.list(apiLang),
     queryFn: () => getAdvisories(apiLang),
     staleTime: 1000 * 60 * 5, // 5 mins
   });
