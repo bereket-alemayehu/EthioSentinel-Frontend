@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
@@ -8,12 +8,27 @@ import { AdvisoryArticles } from "@/features/advisory/components/AdvisoryArticle
 import { SymptomChecker } from "@/features/advisory/components/SymptomChecker";
 import { useEthiopiaRegionalStatus, useHealthFacilitiesWithIndicators, useOutbreakNews } from "../hooks/usePublicHealth";
 import type { District } from "@/features/advisory/types";
-import type { RegionHealthStatus } from "../api/publicHealth";
 import type { RiskLevel } from "@/shared/types";
 import { syncGeolocationFromDeviceApi } from "@/features/auth/api/auth";
 import { publicAdvisoryTitle } from "@/shared/utils/healthMessaging";
+import {
+  buildDistrictCandidatesFromRegions,
+  findNearestDistrict,
+  GPS_UNRELIABLE_ACCURACY_M,
+  haversineKm,
+  isPlausibleEthiopiaCoordinate,
+  resolveSelectionFromProfile,
+} from "@/shared/utils/geo";
+import type { Region } from "@/features/advisory/types";
 
-type LocationStatus = "idle" | "detecting" | "detected" | "denied" | "unsupported" | "unavailable";
+type LocationStatus =
+  | "idle"
+  | "detecting"
+  | "detected"
+  | "denied"
+  | "unsupported"
+  | "unavailable"
+  | "low_accuracy";
 
 type DetectedArea = {
   regionId: number;
@@ -26,6 +41,7 @@ type DetectedArea = {
 type LiveLocation = {
   latitude: number;
   longitude: number;
+  accuracyMeters?: number;
 };
 
 type HealthFacilityMarker = {
@@ -43,7 +59,32 @@ type HealthFacilityMarker = {
   topDiseases?: Array<{ name: string; count: number }>;
 };
 
-const LIVE_RADIUS_KM = 120;
+const NEARBY_FACILITY_LIMIT = 5;
+const NEARBY_RADIUS_KM = 40;
+
+const GEO_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 30_000,
+};
+
+const GEO_DETECT_OPTIONS: PositionOptions = {
+  enableHighAccuracy: true,
+  maximumAge: 0,
+  timeout: 12_000,
+};
+
+const GEO_FALLBACK_OPTIONS: PositionOptions = {
+  enableHighAccuracy: false,
+  maximumAge: 120_000,
+  timeout: 10_000,
+};
+
+function requestCurrentPosition(options: PositionOptions): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
 
 const RISK_CONFIG: Record<RiskLevel, { label: string; badge: string; marker: string }> = {
   CRITICAL: { label: "Danger", badge: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300 dark:border-red-900", marker: "#dc2626" },
@@ -51,45 +92,6 @@ const RISK_CONFIG: Record<RiskLevel, { label: string; badge: string; marker: str
   MODERATE: { label: "Warning", badge: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900", marker: "#eab308" },
   LOW: { label: "Safe", badge: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900", marker: "#16a34a" },
 };
-
-function parseCoordinate(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function distanceInKm(from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): number {
-  const earthRadiusKm = 6371;
-  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
-  const latDelta = toRadians(to.latitude - from.latitude);
-  const lngDelta = toRadians(to.longitude - from.longitude);
-  const lat1 = toRadians(from.latitude);
-  const lat2 = toRadians(to.latitude);
-
-  const a = Math.sin(latDelta / 2) * Math.sin(latDelta / 2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
-  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function findNearestDistrict(latitude: number, longitude: number, statuses: RegionHealthStatus[]): DetectedArea | null {
-  let nearest: DetectedArea | null = null;
-
-  for (const region of statuses) {
-    for (const district of region.districts) {
-      const districtLat = parseCoordinate(district.latitude);
-      const districtLng = parseCoordinate(district.longitude);
-      if (districtLat === null || districtLng === null) continue;
-
-      const distanceKm = distanceInKm({ latitude, longitude }, { latitude: districtLat, longitude: districtLng });
-      if (!nearest || distanceKm < nearest.distanceKm) {
-        nearest = { regionId: region.regionId, region: region.region, districtId: district.districtId, district: district.district, distanceKm };
-      }
-    }
-  }
-
-  return nearest;
-}
-
-// district markers and relative-risk helper removed — map focuses on individual health facilities
 
 // --- Unified Feed (small, in-file helper) ----------------------------------
 type SmallNewsItem = {
@@ -294,7 +296,13 @@ function facilityIcon(riskLevel?: string) {
   return markerIcon(color, "⚕️");
 }
 
-function MapAutoFit({ userLocation, facilities }: { userLocation: LiveLocation | null; facilities?: Array<{ latitude: number; longitude: number }> }) {
+function MapAutoFit({
+  userLocation,
+  facilities,
+}: {
+  userLocation: LiveLocation | null;
+  facilities?: Array<{ latitude: number; longitude: number }>;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -352,7 +360,8 @@ function MapLegend() {
           { color: RISK_CONFIG.CRITICAL.marker, label: "Danger zones" },
           { color: RISK_CONFIG.MODERATE.marker, label: "Warning zones" },
           { color: RISK_CONFIG.LOW.marker, label: "Safe zones" },
-          { color: "#10b981", label: "Health facilities" },
+          { color: "#2563eb", label: "Your location" },
+          { color: "#10b981", label: "Nearby health facilities" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span className="h-3.5 w-3.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: item.color }} />
@@ -380,18 +389,96 @@ export default function CitizenPage() {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [liveLocation, setLiveLocation] = useState<LiveLocation | null>(null);
   const [detectedArea, setDetectedArea] = useState<DetectedArea | null>(null);
-  const [showAllRegions, setShowAllRegions] = useState(false);
   const [activeTab, setActiveTab] = useState<"map" | "advisories" | "symptom">("map");
   const lastSyncedLocationRef = useRef<string>("");
+  const regionsRef = useRef<Region[]>([]);
+  const liveLocationRef = useRef<LiveLocation | null>(null);
 
   const loading = regionsLoading || advisoriesLoading || regionStatusLoading || facilitiesLoading;
   const error = (regionsError?.message || advisoriesError?.message) || "";
 
+  const districtCandidates = useMemo(
+    () => buildDistrictCandidatesFromRegions(regions),
+    [regions],
+  );
+
+  regionsRef.current = regions;
+
+  const applyDetectedMatch = useCallback(
+    (match: {
+      regionId: number;
+      region: string;
+      districtId: number;
+      district: string;
+      distanceKm: number;
+    }) => {
+      setDetectedArea(match);
+      setSelectedRegionId(String(match.regionId));
+      setSelectedDistrictId(String(match.districtId));
+    },
+    [],
+  );
+
+  const processGeolocation = useCallback(
+    async (latitude: number, longitude: number, accuracyMeters?: number) => {
+      setLiveLocation({ latitude, longitude, accuracyMeters });
+      liveLocationRef.current = { latitude, longitude, accuracyMeters };
+
+      if (!isPlausibleEthiopiaCoordinate(latitude, longitude)) {
+        setLocationStatus("unavailable");
+        return;
+      }
+
+      if (districtCandidates.length === 0) {
+        setLocationStatus(regionsLoading ? "detecting" : "unavailable");
+        return;
+      }
+
+      const match = findNearestDistrict(latitude, longitude, districtCandidates);
+      if (!match) {
+        setLocationStatus("unavailable");
+        return;
+      }
+
+      const unreliable =
+        typeof accuracyMeters === "number" &&
+        accuracyMeters > GPS_UNRELIABLE_ACCURACY_M;
+
+      setLocationStatus(unreliable ? "low_accuracy" : "detected");
+      applyDetectedMatch(match);
+
+      const signature = `${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+      if (lastSyncedLocationRef.current === signature) return;
+      lastSyncedLocationRef.current = signature;
+
+      try {
+        const user = await syncGeolocationFromDeviceApi(latitude, longitude);
+        const fromProfile = resolveSelectionFromProfile(
+          regionsRef.current,
+          user.region,
+          user.assignedDistrict,
+        );
+        if (fromProfile?.districtId) {
+          applyDetectedMatch({
+            regionId: Number(fromProfile.regionId),
+            region: fromProfile.region,
+            districtId: Number(fromProfile.districtId),
+            district: fromProfile.district,
+            distanceKm: match.distanceKm,
+          });
+        }
+      } catch {
+        // Keep client-side nearest-district match when sync fails.
+      }
+    },
+    [applyDetectedMatch, districtCandidates, regionsLoading],
+  );
+
   useEffect(() => {
-    if (regions.length > 0 && !selectedRegionId) {
-      setSelectedRegionId(String(regions[0].id));
-    }
-  }, [regions, selectedRegionId]);
+    const pending = liveLocationRef.current;
+    if (!pending || districtCandidates.length === 0 || detectedArea) return;
+    void processGeolocation(pending.latitude, pending.longitude, pending.accuracyMeters);
+  }, [detectedArea, districtCandidates, processGeolocation]);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) {
@@ -401,36 +488,41 @@ export default function CitizenPage() {
 
     setLocationStatus((current) => (current === "idle" ? "detecting" : current));
 
+    const onPosition = (position: GeolocationPosition) => {
+      void processGeolocation(
+        position.coords.latitude,
+        position.coords.longitude,
+        position.coords.accuracy,
+      );
+    };
+
     const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLiveLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-        setLocationStatus("detected");
-      },
+      onPosition,
       (geoError) => {
-        setLocationStatus(geoError.code === geoError.PERMISSION_DENIED ? "denied" : "unavailable");
+        if (liveLocationRef.current) return;
+        setLocationStatus(
+          geoError.code === geoError.PERMISSION_DENIED ? "denied" : "unavailable",
+        );
       },
-      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 12_000 },
+      GEO_OPTIONS,
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+    const fallbackTimer = window.setTimeout(() => {
+      if (liveLocationRef.current) return;
+      navigator.geolocation.getCurrentPosition(
+        onPosition,
+        () => {
+          /* keep detecting / unavailable from watch */
+        },
+        GEO_FALLBACK_OPTIONS,
+      );
+    }, 8_000);
 
-  useEffect(() => {
-    if (!liveLocation || !regionStatus?.data?.length) return;
-
-    const match = findNearestDistrict(liveLocation.latitude, liveLocation.longitude, regionStatus.data);
-    if (match) {
-      setDetectedArea(match);
-      setSelectedRegionId(String(match.regionId));
-      setSelectedDistrictId(String(match.districtId));
-    }
-
-    const signature = `${liveLocation.latitude.toFixed(5)},${liveLocation.longitude.toFixed(5)}`;
-    if (lastSyncedLocationRef.current !== signature) {
-      lastSyncedLocationRef.current = signature;
-      void syncGeolocationFromDeviceApi(liveLocation.latitude, liveLocation.longitude).catch(() => undefined);
-    }
-  }, [liveLocation, regionStatus?.data]);
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [processGeolocation]);
 
   const selectedRegion = useMemo(() => regions.find((item) => String(item.id) === selectedRegionId) ?? null, [regions, selectedRegionId]);
   const districtOptions = selectedRegion?.districts ?? [];
@@ -445,11 +537,14 @@ export default function CitizenPage() {
     });
   }, [advisories, selectedRegionId, selectedDistrictId]);
 
-  // district markers are not rendered on the map; health facility markers are shown instead
-
   const visibleHealthFacilities = useMemo<Array<HealthFacilityMarker>>(() => {
     const facilities = healthFacilitiesWithIndicators
-      .filter((f) => f.Y !== null && f.X !== null)
+      .filter((f) => {
+        if (f.Y === null || f.X === null) return false;
+        const latitude = Number(f.Y);
+        const longitude = Number(f.X);
+        return isPlausibleEthiopiaCoordinate(latitude, longitude);
+      })
       .map((facility) => ({
         id: String(facility.id),
         name: facility.HF_Name,
@@ -461,33 +556,41 @@ export default function CitizenPage() {
         riskLevel: facility.riskLevel,
         totalCases: facility.totalCases,
         totalDeaths: facility.totalDeaths,
-        topDiseases: facility.topDiseases?.map(d => ({ name: d.diseaseType, count: d.cases })) || [],
+        topDiseases: facility.topDiseases?.map((d) => ({ name: d.diseaseType, count: d.cases })) || [],
         distanceKm: liveLocation
-          ? distanceInKm(
-              { latitude: liveLocation.latitude, longitude: liveLocation.longitude },
-              { latitude: Number(facility.Y), longitude: Number(facility.X) },
+          ? haversineKm(
+              liveLocation.latitude,
+              liveLocation.longitude,
+              Number(facility.Y),
+              Number(facility.X),
             )
           : null,
       }));
 
+    if (liveLocation) {
+      const sorted = [...facilities]
+        .filter((f) => f.distanceKm !== null)
+        .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY));
+
+      const withinRadius = sorted.filter((f) => (f.distanceKm ?? Infinity) <= NEARBY_RADIUS_KM);
+      const pool = withinRadius.length > 0 ? withinRadius : sorted;
+      return pool.slice(0, NEARBY_FACILITY_LIMIT);
+    }
+
     const regionNameFilter = selectedRegion?.name?.toLowerCase().trim();
-    const districtNameFilter = districtOptions.find((d: District) => String(d.id) === selectedDistrictId)?.name?.toLowerCase().trim();
+    const districtNameFilter = districtOptions
+      .find((d: District) => String(d.id) === selectedDistrictId)
+      ?.name?.toLowerCase()
+      .trim();
 
-    const scopedFacilities = facilities.filter((facility) => {
-      if (regionNameFilter && facility.region.toLowerCase().trim() !== regionNameFilter) return false;
-      if (districtNameFilter && facility.district.toLowerCase().trim() !== districtNameFilter) return false;
-      return true;
-    });
-
-    // Toggle between nearby-only and all scoped facilities
-    const filtered =
-      liveLocation && !showAllRegions
-        ? scopedFacilities.filter((f) => f.distanceKm !== null && f.distanceKm <= LIVE_RADIUS_KM)
-        : scopedFacilities;
-    return [...filtered]
-      .sort((a, b) => (a.distanceKm ?? Number.POSITIVE_INFINITY) - (b.distanceKm ?? Number.POSITIVE_INFINITY))
-      .slice(0, 50);
-  }, [districtOptions, healthFacilitiesWithIndicators, liveLocation, selectedDistrictId, selectedRegion?.name, showAllRegions]);
+    return facilities
+      .filter((facility) => {
+        if (regionNameFilter && facility.region.toLowerCase().trim() !== regionNameFilter) return false;
+        if (districtNameFilter && facility.district.toLowerCase().trim() !== districtNameFilter) return false;
+        return true;
+      })
+      .slice(0, NEARBY_FACILITY_LIMIT);
+  }, [districtOptions, healthFacilitiesWithIndicators, liveLocation, selectedDistrictId, selectedRegion?.name]);
 
   useEffect(() => {
     if (selectedFacility && !visibleHealthFacilities.some((facility) => facility.id === selectedFacility.id)) {
@@ -527,26 +630,46 @@ export default function CitizenPage() {
     ? { cases: focusedRegionStatus.totalCases, deaths: focusedRegionStatus.totalDeaths, reports: focusedRegionStatus.reportCount, spikes: focusedRegionStatus.spikeCount }
     : regionalTotals;
 
-  const handleDetectLocation = () => {
+  const handleDetectLocation = async () => {
     if (!("geolocation" in navigator)) {
       setLocationStatus("unsupported");
       return;
     }
 
     setLocationStatus("detecting");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLiveLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-        setLocationStatus("detected");
-      },
-      (geoError) => {
-        setLocationStatus(geoError.code === geoError.PERMISSION_DENIED ? "denied" : "unavailable");
-      },
-      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 12_000 },
-    );
+    lastSyncedLocationRef.current = "";
+
+    const applyPosition = async (position: GeolocationPosition) => {
+      await processGeolocation(
+        position.coords.latitude,
+        position.coords.longitude,
+        position.coords.accuracy,
+      );
+    };
+
+    try {
+      try {
+        await applyPosition(await requestCurrentPosition(GEO_DETECT_OPTIONS));
+        return;
+      } catch {
+        await applyPosition(await requestCurrentPosition(GEO_FALLBACK_OPTIONS));
+        return;
+      }
+    } catch (err) {
+      if (liveLocationRef.current) {
+        await processGeolocation(
+          liveLocationRef.current.latitude,
+          liveLocationRef.current.longitude,
+          liveLocationRef.current.accuracyMeters,
+        );
+        return;
+      }
+      const geoError = err as { code?: number };
+      setLocationStatus(geoError.code === 1 ? "denied" : "unavailable");
+    }
   };
 
-  const nearbyFacilities = useMemo(() => visibleHealthFacilities.slice(0, 6), [visibleHealthFacilities]);
+  const nearbyFacilities = visibleHealthFacilities;
 
   return (
     <div className="w-full min-h-screen">
@@ -690,7 +813,15 @@ export default function CitizenPage() {
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white/80">
-                      {locationStatus === "detecting" ? t("detectingLocation") : locationStatus === "detected" ? t("locationDetected") : locationStatus === "denied" ? t("locationPermissionDenied") : locationStatus === "unsupported" ? t("locationUnsupported") : t("locationNotDetected")}
+                      {locationStatus === "detecting"
+                        ? t("detectingLocation")
+                        : locationStatus === "detected" || locationStatus === "low_accuracy"
+                          ? t("locationDetected")
+                          : locationStatus === "denied"
+                              ? t("locationPermissionDenied")
+                              : locationStatus === "unsupported"
+                                ? t("locationUnsupported")
+                                : t("locationNotDetected")}
                     </span>
                     <button type="button" onClick={handleDetectLocation} className="rounded-full bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#0f6b7c] shadow-sm transition hover:bg-white/90">
                       {t("detectMyRegion")}
@@ -735,11 +866,9 @@ export default function CitizenPage() {
                             </div>
                           </Popup>
                         </CircleMarker>
-                        <Circle center={[liveLocation.latitude, liveLocation.longitude]} radius={LIVE_RADIUS_KM * 1000} pathOptions={{ color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.08, weight: 1.5 }} />
+                        <Circle center={[liveLocation.latitude, liveLocation.longitude]} radius={NEARBY_RADIUS_KM * 1000} pathOptions={{ color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.06, weight: 1.5 }} />
                       </>
                     )}
-
-                    {/* District markers hidden — showing health facilities instead */}
 
                     {visibleHealthFacilities.map((facility) => (
                       <Marker
@@ -872,18 +1001,16 @@ export default function CitizenPage() {
                 </div>
 
                 <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nearby health areas</p>
-                      <h3 className="mt-1 text-xl font-black text-foreground">Around you</h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAllRegions((value) => !value)}
-                      className="rounded-full border border-border px-3 py-1 text-xs font-black uppercase tracking-wider text-foreground transition hover:bg-muted"
-                    >
-                      {showAllRegions ? "Focus nearby" : "Show all"}
-                    </button>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Nearby health areas</p>
+                    <h3 className="mt-1 text-xl font-black text-foreground">
+                      {liveLocation ? "Closest facilities to you" : "Facilities in selected area"}
+                    </h3>
+                    {liveLocation ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Showing up to {NEARBY_FACILITY_LIMIT} health facilities within {NEARBY_RADIUS_KM} km.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 space-y-3">

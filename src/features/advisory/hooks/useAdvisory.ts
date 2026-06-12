@@ -1,12 +1,11 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getRegions, getAdvisories, checkSymptoms } from '../api';
-import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { getRegions, getAdvisories, checkSymptoms } from "../api";
 
 export const advisoryKeys = {
-  all: ['advisory'] as const,
-  regions: () => [...advisoryKeys.all, 'regions'] as const,
-  list: (language?: 'ENGLISH' | 'AMHARIC') =>
-    [...advisoryKeys.all, 'list', language ?? 'all'] as const,
+  all: ["advisory"] as const,
+  regions: () => [...advisoryKeys.all, "regions"] as const,
+  list: (language?: "ENGLISH" | "AMHARIC") =>
+    [...advisoryKeys.all, "list", language ?? "all"] as const,
 };
 
 export const useRegions = () => {
@@ -19,22 +18,19 @@ export const useRegions = () => {
   });
 };
 
-export const useAdvisories = () => {
-  const { i18n } = useTranslation();
-  const lang = (i18n.language || 'en').toString();
-  // Map common codes to backend expected values
-  const apiLang = lang.toLowerCase().startsWith('am') ? 'AMHARIC' : 'ENGLISH';
-
+export const useAdvisories = (language?: "ENGLISH" | "AMHARIC") => {
   return useQuery({
-    queryKey: [...advisoryKeys.list(), apiLang],
-    queryFn: () => getAdvisories(apiLang),
+    queryKey: advisoryKeys.list(language),
+    queryFn: () => getAdvisories(language),
     staleTime: 1000 * 60 * 5, // 5 mins
   });
 };
 
 export const useSymptomCheckMutation = () => {
   return useMutation({
-    mutationFn: (args: { symptoms: string[]; language?: 'ENGLISH' | 'AMHARIC' }) =>
-      checkSymptoms(args.symptoms, args.language),
+    mutationFn: (args: {
+      symptoms: string[];
+      language?: "ENGLISH" | "AMHARIC";
+    }) => checkSymptoms(args.symptoms, args.language),
   });
 };

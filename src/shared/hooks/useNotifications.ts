@@ -4,8 +4,12 @@ import { useAuth } from '@/app/providers/auth/AuthProvider';
 import { getNotifications, type NotificationItem } from '@/shared/api/notifications';
 import {
   areNotificationsEnabled,
+  getDismissedNotificationIds,
   getLastReadAt,
+  NOTIFICATIONS_DISMISSED_EVENT,
   NOTIFICATIONS_MARKED_READ_EVENT,
+  dismissAllNotifications,
+  dismissNotification,
 } from '@/shared/lib/notificationsPrefs';
 
 export const notificationQueryKey = ['notifications', 'list'] as const;
@@ -21,6 +25,7 @@ export function useNotifications() {
   const { user } = useAuth();
   const [prefsRev, setPrefsRev] = useState(0);
   const [readRev, setReadRev] = useState(0);
+  const [dismissedRev, setDismissedRev] = useState(0);
 
   useEffect(() => {
     const onPref = () => setPrefsRev((n) => n + 1);
@@ -33,6 +38,13 @@ export function useNotifications() {
     window.addEventListener(NOTIFICATIONS_MARKED_READ_EVENT, onMarkedRead);
     return () =>
       window.removeEventListener(NOTIFICATIONS_MARKED_READ_EVENT, onMarkedRead);
+  }, []);
+
+  useEffect(() => {
+    const onDismissed = () => setDismissedRev((n) => n + 1);
+    window.addEventListener(NOTIFICATIONS_DISMISSED_EVENT, onDismissed);
+    return () =>
+      window.removeEventListener(NOTIFICATIONS_DISMISSED_EVENT, onDismissed);
   }, []);
 
   const enabled = useMemo(() => {
@@ -52,15 +64,41 @@ export function useNotifications() {
     void readRev;
     return getLastReadAt();
   }, [readRev]);
-  const items: NotificationItem[] = query.data ?? [];
+
+  const dismissedIds = useMemo(() => {
+    void dismissedRev;
+    return getDismissedNotificationIds();
+  }, [dismissedRev]);
+
+  const items: NotificationItem[] = useMemo(
+    () => (query.data ?? []).filter((n) => !dismissedIds.has(n.id)),
+    [query.data, dismissedIds],
+  );
+
   const unreadCount = items.filter(
     (n) => new Date(n.createdAt).getTime() > lastRead,
   ).length;
+
+  const clearNotification = (id: string) => {
+    dismissNotification(id);
+    setDismissedRev((n) => n + 1);
+  };
+
+  const clearReadNotifications = () => {
+    const readIds = items
+      .filter((n) => new Date(n.createdAt).getTime() <= lastRead)
+      .map((n) => n.id);
+    dismissAllNotifications(readIds);
+    setDismissedRev((n) => n + 1);
+  };
 
   return {
     ...query,
     items,
     unreadCount,
     enabled,
+    lastRead,
+    clearNotification,
+    clearReadNotifications,
   };
 }

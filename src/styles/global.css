@@ -59,6 +59,19 @@
     0 0 20px color-mix(in srgb, var(--risk-color) 45%, transparent);
 }
 
+.risk-pulse-marker[data-selected="true"] .risk-pulse-ring {
+  border-width: 4px;
+  animation-duration: 1.6s;
+}
+
+.risk-pulse-marker[data-selected="true"] .risk-pulse-core {
+  inset: 14%;
+  box-shadow:
+    0 0 14px var(--risk-color),
+    0 0 26px color-mix(in srgb, var(--risk-color) 65%, transparent),
+    0 0 40px color-mix(in srgb, var(--risk-color) 35%, transparent);
+}
+
 @keyframes risk-pulse-expand {
   0% {
     transform: scale(0.4);

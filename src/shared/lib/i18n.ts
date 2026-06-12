@@ -297,6 +297,10 @@ const resources = {
 
       markAllRead: "Mark all read",
       markAllReadDone: "Notifications marked as read",
+      clearRead: "Clear read",
+      clearReadDone: "Read notifications cleared",
+      clearNotification: "Clear notification",
+      pendingReview: "Pending review",
       loginForNotifications: "Sign in to see notifications.",
       notificationsDisabledHint: "Notification polling is turned off in Settings.",
       loadingNotifications: "Loading…",
@@ -699,6 +703,10 @@ const resources = {
 
       markAllRead: "ሁሉንም እንደተነበበ ምልክት አድርግ",
       markAllReadDone: "ማሳወቂያዎች ተነበቡ ተብለው ተመዝግበዋል",
+      clearRead: "የተነበቡትን አጽዳ",
+      clearReadDone: "የተነበቡ ማሳወቂያዎች ተጸድተዋል",
+      clearNotification: "ማሳወቂያ አጽዳ",
+      pendingReview: "በግምገማ ላይ",
       loginForNotifications: "ማሳወቂያዎችን ለማየት ይግቡ።",
       notificationsDisabledHint: "ማሳወቂያ ፖሊንግ በቅንብሮች ተከልክሏል።",
       loadingNotifications: "በመጫን ላይ…",

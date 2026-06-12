@@ -24,14 +24,19 @@ export function resolveDistrictRiskLevel(rows: GeoStat[]): MapRiskLevel {
   return casesToRiskLevel(totalCases);
 }
 
-export function createRiskPulseIcon(risk: MapRiskLevel): L.DivIcon {
+export function createRiskPulseIcon(
+  risk: MapRiskLevel,
+  options?: { emphasized?: boolean },
+): L.DivIcon {
   const color = RISK_COLORS[risk];
-  const size = risk === "LOW" ? 40 : risk === "CRITICAL" ? 38 : 36;
+  const baseSize = risk === "LOW" ? 40 : risk === "CRITICAL" ? 38 : 36;
+  const size = Math.round(baseSize * (options?.emphasized ? 1.3 : 1));
+  const selectedAttr = options?.emphasized ? ' data-selected="true"' : "";
 
   return L.divIcon({
     className: "risk-pulse-marker-leaflet",
     html: `
-      <div class="risk-pulse-marker" data-risk="${risk}" style="--risk-color:${color};--risk-size:${size}px">
+      <div class="risk-pulse-marker" data-risk="${risk}"${selectedAttr} style="--risk-color:${color};--risk-size:${size}px">
         <span class="risk-pulse-ring"></span>
         <span class="risk-pulse-ring risk-pulse-ring--delay"></span>
         <span class="risk-pulse-core"></span>

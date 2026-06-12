@@ -38,7 +38,7 @@ const AuthRecaptchaInner = forwardRef<ReCAPTCHA, AuthRecaptchaProps>(
           onChange={handleChange}
           onExpired={handleExpired}
           onErrored={handleErrored}
-          theme="light"
+          theme="dark"
         />
       </div>
     );

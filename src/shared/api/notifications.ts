@@ -17,5 +17,6 @@ export async function getNotifications(limit = 10): Promise<NotificationItem[]> 
     '/alerts/notifications',
     { params: { limit } },
   );
-  return response.data.data;
+  const payload = response.data?.data;
+  return Array.isArray(payload) ? payload : [];
 }

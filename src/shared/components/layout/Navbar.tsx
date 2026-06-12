@@ -50,6 +50,9 @@ export function Navbar() {
      unreadCount,
      enabled: notificationsEnabled,
      isLoading: notificationsLoading,
+     lastRead,
+     clearNotification,
+     clearReadNotifications,
    } = useNotifications()
   
 
@@ -179,18 +182,36 @@ export function Navbar() {
               <DropdownMenuContent className="w-80 sm:w-96 p-0" align="end">
                 <div className="flex items-center justify-between border-b px-3 py-2">
                   <span className="text-sm font-bold">{t("notifications")}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      markNotificationsReadNow()
-                      toast.success(t("markAllReadDone"))
-                    }}
-                  >
-                    {t("markAllRead")}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        markNotificationsReadNow()
+                        toast.success(t("markAllReadDone"))
+                      }}
+                    >
+                      {t("markAllRead")}
+                    </Button>
+                    {notificationItems.some(
+                      (n) => new Date(n.createdAt).getTime() <= lastRead,
+                    ) ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-muted-foreground"
+                        onClick={() => {
+                          clearReadNotifications()
+                          toast.success(t("clearReadDone"))
+                        }}
+                      >
+                        {t("clearRead")}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {!user ? (
@@ -209,6 +230,7 @@ export function Navbar() {
                     <ul className="divide-y divide-border">
                       {notificationItems.slice(0, 10).map((n) => {
                         const sev = String(n.severity).toUpperCase()
+                        const isRead = new Date(n.createdAt).getTime() <= lastRead
                         const dot =
                           sev === "CRITICAL"
                             ? "bg-red-500"
@@ -226,11 +248,26 @@ export function Navbar() {
                                 <p className="text-[10px] text-muted-foreground mt-0.5">
                                   {n.targetZone}
                                   {n.disease ? ` · ${n.disease}` : ""}
+                                  {!n.isDelivered ? ` · ${t("pendingReview")}` : ""}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground">
                                   {new Date(n.createdAt).toLocaleString()}
                                 </p>
                               </div>
+                              {isRead ? (
+                                <button
+                                  type="button"
+                                  className="mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                  aria-label={t("clearNotification")}
+                                  onClick={(event) => {
+                                    event.preventDefault()
+                                    event.stopPropagation()
+                                    clearNotification(n.id)
+                                  }}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
                             </div>
                           </li>
                         )
