@@ -7,8 +7,9 @@ export const getRegions = async (): Promise<Region[]> => {
 };
 
 export const getAdvisories = async (language?: string): Promise<Advisory[]> => {
-  const qs = language ? `?lang=${encodeURIComponent(language)}` : "";
-  const response = await api.get<{ data: Advisory[] }>(`/advisories${qs}`);
+  const response = await api.get<{ data: Advisory[] }>('/advisories', {
+    params: language ? { language } : undefined,
+  });
   return response.data.data.filter((item) => item.status === 'APPROVED');
 };
 

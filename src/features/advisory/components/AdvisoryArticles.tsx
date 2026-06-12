@@ -80,12 +80,20 @@ const RISK_CONFIG: Record<
   },
 };
 
+function advisoryTitle(item: Advisory): string {
+  return item.translatedTitle?.trim() || item.title;
+}
+
 function advisoryBody(item: Advisory): string {
-  return item.publicContent?.trim() || item.content;
+  return (
+    item.translatedContent?.trim() ||
+    item.publicContent?.trim() ||
+    item.content
+  );
 }
 
 function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePayload {
-  const content = (item.translatedContent as string) ?? item.publicContent ?? item.content;
+  const content = advisoryBody(item);
   const issued = item.createdAt
     ? new Date(item.createdAt).toLocaleString(undefined, {
         month: "long",
@@ -99,7 +107,7 @@ function buildPayload(item: Advisory, t: (k: string) => string): AdvisorySharePa
     resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, item.title) ||
     t("generalHealth");
   return {
-    title: publicAdvisoryTitle(item.title),
+    title: publicAdvisoryTitle(advisoryTitle(item)),
     content: parsePublicAdvisoryBlocks(content)
       .map((b) =>
         b.kind === "list"
@@ -188,8 +196,8 @@ function AdvisoryModal({
 }) {
   const { t } = useTranslation();
   const cfg = RISK_CONFIG[item.riskLevel];
-  const content = (item.translatedContent as string) ?? item.publicContent ?? item.content;
-  const title = (item.translatedTitle as string) ?? item.title;
+  const content = advisoryBody(item);
+  const title = advisoryTitle(item);
   const diseaseLabel =
     resolvePublicDiseaseLabel(item.disease?.name, item.diseaseType, title) ||
     t("generalHealth");
@@ -373,7 +381,7 @@ export function AdvisoryArticles({ items, loading, emptyHint }: AdvisoryArticles
 
                 {/* Title */}
                 <h3 className="text-base font-bold text-foreground leading-snug tracking-tight mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                  {publicAdvisoryTitle(item.title)}
+                  {publicAdvisoryTitle(advisoryTitle(item))}
                 </h3>
 
                 {/* Summary */}

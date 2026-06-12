@@ -104,8 +104,19 @@ type SmallNewsItem = {
   verified: "who" | "moh" | null;
 };
 
+function advisoryDisplayTitle(advisory: {
+  translatedTitle?: string;
+  title?: string;
+  headline?: string;
+  summary?: string;
+}): string {
+  return advisory.translatedTitle?.trim() || advisory.title || advisory.headline || advisory.summary || "Advisory";
+}
+
 function advisoryPreviewText(advisory: any, maxLen = 140): string {
-  const raw = String(advisory.publicContent || advisory.content || advisory.summary || "").trim();
+  const raw = String(
+    advisory.translatedContent || advisory.publicContent || advisory.content || advisory.summary || "",
+  ).trim();
   if (!raw) {
     return "Please review and follow this health alert guidance immediately.";
   }
@@ -158,7 +169,7 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
             <div className="space-y-2">
               {alerts.map((a) => (
                 <div key={a.id} className="rounded-xl border-l-4 border-l-red-600 border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
-                  <p className="font-bold text-red-900 dark:text-red-200">{publicAdvisoryTitle(a.title || a.headline || a.summary || 'Alert')}</p>
+                  <p className="font-bold text-red-900 dark:text-red-200">{publicAdvisoryTitle(advisoryDisplayTitle(a))}</p>
                   <p className="mt-1 text-xs text-red-700 dark:text-red-300">{a.regionName || a.region?.name || 'Global'}</p>
                   <p className="mt-2 text-xs leading-relaxed text-red-800/90 dark:text-red-200/90">
                     {advisoryPreviewText(a)}
@@ -178,7 +189,7 @@ function UnifiedFeed({ advisoriesList }: { advisoriesList: any[] }) {
             <div className="space-y-2">
               {advisoriesGroup.map((a) => (
                 <div key={a.id} className="rounded-xl border-l-4 border-l-amber-500 border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
-                  <p className="font-bold text-amber-900 dark:text-amber-200">{publicAdvisoryTitle(a.title || a.headline || a.summary || 'Advisory')}</p>
+                  <p className="font-bold text-amber-900 dark:text-amber-200">{publicAdvisoryTitle(advisoryDisplayTitle(a))}</p>
                   <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{a.regionName || a.region?.name || 'Global'}</p>
                 </div>
               ))}
